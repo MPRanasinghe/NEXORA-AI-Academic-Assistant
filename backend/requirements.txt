@@ -1,0 +1,26 @@
+# API
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+
+# AI / LLM
+google-genai
+
+# RAG and document processing
+pymupdf
+scikit-learn
+numpy
+chromadb
+
+# Database
+sqlalchemy
+aiosqlite
+
+# Authentication
+PyJWT
+pwdlib[argon2]
+email-validator
+
+# Utilities
+python-dotenv
