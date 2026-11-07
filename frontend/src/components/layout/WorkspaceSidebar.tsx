@@ -16,10 +16,10 @@ import {
   PanelLeftOpen,
   LogOut,
   ChevronRight,
-  Sparkles,
+  
 } from "lucide-react";
 
-type UserRole = "student" | "academic_staff" | "administrator";
+import type { UserRole } from "@/lib/demo-user";
 
 interface WorkspaceSidebarProps {
   role?: UserRole;
@@ -31,7 +31,7 @@ export default function WorkspaceSidebar({
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
-  const sharedNavigation = [
+  const dashboardNavigation = [
     {
       label: "Dashboard",
       href: "/dashboard",
@@ -42,38 +42,47 @@ export default function WorkspaceSidebar({
       href: "/assistant",
       icon: null,
     },
-    {
-      label: "Learning",
-      href: "/learning",
-      icon: BookOpen,
-    },
-    {
-      label: "Quizzes",
-      href: "/quizzes",
-      icon: ClipboardList,
-    },
-    {
-      label: "Notes",
-      href: "/notes",
-      icon: NotebookPen,
-    },
-    {
-      label: "Academic Services",
-      href: "/academic",
-      icon: GraduationCap,
-    },
   ];
 
   const roleNavigation = {
-    student: [],
+    student: [
+      ...dashboardNavigation,
+      {
+        label: "Learning",
+        href: "/learning",
+        icon: BookOpen,
+      },
+      {
+        label: "Quizzes",
+        href: "/quizzes",
+        icon: ClipboardList,
+      },
+      {
+        label: "Notes",
+        href: "/notes",
+        icon: NotebookPen,
+      },
+      {
+        label: "Academic Services",
+        href: "/academic",
+        icon: GraduationCap,
+      },
+    ],
     academic_staff: [
+      ...dashboardNavigation,
       {
         label: "Quiz Management",
         href: "/quizzes/manage",
         icon: ClipboardList,
       },
+      {
+        label: "Academic Services",
+        href: "/academic",
+        icon: GraduationCap,
+      },
     ],
     administrator: [
+      ...dashboardNavigation,
       {
         label: "Administration",
         href: "/administration",
@@ -81,11 +90,7 @@ export default function WorkspaceSidebar({
       },
     ],
   };
-
-  const navigation = [
-    ...sharedNavigation,
-    ...roleNavigation[role],
-  ];
+  const navigation = roleNavigation[role];
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {

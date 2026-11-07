@@ -1,6 +1,9 @@
 
 "use client";
 import AcademicStaffDashboard from "@/components/dashboard/AcademicStaffDashboard";
+import AdministratorDashboard from "@/components/dashboard/AdministratorDashboard";
+import { DEMO_ROLE } from "@/lib/demo-user";
+
 import {
   BookOpen,
   ClipboardList,
@@ -61,10 +64,14 @@ function NexoraMark({
 }
 
 export default function DashboardPage() {
-  const dashboardRole = "academic_staff" as "student" | "academic_staff";
+  const dashboardRole = DEMO_ROLE;
 
   if (dashboardRole === "academic_staff") {
     return <AcademicStaffDashboard />;
+  }
+
+  if (dashboardRole === "administrator") {
+    return <AdministratorDashboard />;
   }
 
   return (
