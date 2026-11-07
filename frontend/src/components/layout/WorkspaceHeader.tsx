@@ -9,19 +9,38 @@ import {
   Bell,
   UserRound,
 } from "lucide-react";
+import type { UserRole } from "@/lib/demo-user";
+import { ROLE_META } from "@/lib/demo-user";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/assistant": "AI Assistant",
   "/learning": "Learning",
   "/quizzes": "Quizzes",
+  "/quiz-management": "Quiz Management",
   "/notes": "Notes",
   "/academic": "Academic Services",
-  "/administration": "Administration",
+  "/administration": "Explainable RAG Overview",
+  "/administration/knowledge-base": "Knowledge Base Management",
+  "/administration/corpus": "Corpus & Mathematical Explorer",
+  "/administration/document-processing": "Document Processing Pipeline",
+  "/administration/retrieval": "Retrieval Explorer & Ranking",
+  "/administration/explainability": "Mathematical Explainability",
+  "/administration/agent-monitor": "Agent Execution Monitor",
+  "/administration/evaluation": "RAG Evaluation Center",
+  "/administration/dataset": "Ground Truth Dataset",
+  "/administration/analytics": "Research Analytics & Telemetry",
+  "/administration/configuration": "Model & Retrieval Configuration",
+  "/administration/settings": "System Settings",
+  "/administration/users": "User & Access Management",
   "/settings": "Settings",
 };
 
-export default function WorkspaceHeader() {
+interface WorkspaceHeaderProps {
+  role?: UserRole;
+}
+
+export default function WorkspaceHeader({ role }: WorkspaceHeaderProps) {
   const pathname = usePathname();
 
   const currentTitle =
@@ -30,6 +49,15 @@ export default function WorkspaceHeader() {
       pathname.startsWith(`${path}/`)
     )?.[1] ??
     "Workspace";
+
+  const roleMeta = role ? ROLE_META[role] : null;
+
+  // Role pill colours
+  const rolePillClass: Record<UserRole, string> = {
+    student: "border-violet-400/20 bg-violet-500/10 text-violet-300",
+    academic_staff: "border-cyan-400/20 bg-cyan-500/10 text-cyan-300",
+    administrator: "border-blue-400/20 bg-blue-500/10 text-blue-300",
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-[84px] items-center justify-between border-b border-white/[0.08] bg-[#080B18]/80 px-5 backdrop-blur-2xl sm:px-8">
@@ -50,6 +78,15 @@ export default function WorkspaceHeader() {
         <h1 className="text-sm font-semibold text-violet-300 sm:text-base">
           {currentTitle}
         </h1>
+
+        {/* Role badge */}
+        {roleMeta && role && (
+          <span
+            className={`hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex ${rolePillClass[role]}`}
+          >
+            {roleMeta.label}
+          </span>
+        )}
       </div>
 
       {/* Header Actions */}

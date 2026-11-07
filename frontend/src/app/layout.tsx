@@ -1,7 +1,8 @@
 
 import "./globals.css";
+import { DemoAuthProvider } from "@/lib/demo-auth-context";
 
-export default function WorkspaceLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -9,7 +10,7 @@ export default function WorkspaceLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <DemoAuthProvider>{children}</DemoAuthProvider>
       </body>
     </html>
   );

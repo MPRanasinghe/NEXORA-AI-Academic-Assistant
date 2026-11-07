@@ -1,27 +1,88 @@
 
 "use client";
 
-
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Eye,
   EyeOff,
+  GraduationCap,
   LockKeyhole,
   Mail,
   ShieldCheck,
+  Users,
 } from "lucide-react";
+import { useDemoAuth } from "@/lib/demo-auth-context";
+import { ROLE_META, type UserRole } from "@/lib/demo-user";
+
+const ROLES: { value: UserRole; label: string; description: string; icon: React.ElementType; accent: string; border: string }[] = [
+  {
+    value: "student",
+    label: "Student",
+    description: "Access quizzes, learning resources, and the AI assistant.",
+    icon: GraduationCap,
+    accent: "from-violet-500 to-violet-400",
+    border: "border-violet-400/30",
+  },
+  {
+    value: "academic_staff",
+    label: "Academic Staff",
+    description: "Manage quizzes, courses, and monitor student progress.",
+    icon: Users,
+    accent: "from-cyan-500 to-cyan-400",
+    border: "border-cyan-400/30",
+  },
+  {
+    value: "administrator",
+    label: "Administrator",
+    description: "Full platform access — users, analytics, and settings.",
+    icon: ShieldCheck,
+    accent: "from-blue-500 to-blue-400",
+    border: "border-blue-400/30",
+  },
+];
 
 export default function LoginPage() {
+  const { login, role, loading } = useDemoAuth();
+  const router = useRouter();
+
+  const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // If a session is already active, bounce to dashboard
+  useEffect(() => {
+    if (!loading && role !== null) {
+      router.replace("/dashboard");
+    }
+  }, [loading, role, router]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsLoggingIn(true);
 
-    // Authentication will be connected to the backend later.
-    alert("Login interface is ready. Backend authentication is coming soon.");
+    // Demo login — no backend required
+    login(selectedRole);
+
+    // Small delay for visual feedback, then navigate
+    setTimeout(() => {
+      router.push(ROLE_META[selectedRole].defaultPath);
+    }, 400);
+  }
+
+  if (loading || role !== null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#080B18]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-violet-500/20">
+            <span className="text-xl font-black text-white">N</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -35,24 +96,21 @@ export default function LoginPage() {
       </div>
 
       {/* Login card */}
-      <div className="relative z-10 w-full max-w-[460px]">
+      <div className="relative z-10 w-full max-w-[480px]">
 
-        {/* Logo */}
-        
         {/* Branding */}
         <div className="mb-9 flex flex-col items-center">
-            <Link
-                href="/"
-                className="glow-text text-4xl font-bold tracking-[0.18em] transition-opacity hover:opacity-80 sm:text-5xl"
-            >
-                NEXORA
-            </Link>
+          <Link
+            href="/"
+            className="glow-text text-4xl font-bold tracking-[0.18em] transition-opacity hover:opacity-80 sm:text-5xl"
+          >
+            NEXORA
+          </Link>
 
-        <p className="mt-3 text-sm tracking-wide text-slate-400">
+          <p className="mt-3 text-sm tracking-wide text-slate-400">
             Intelligent Academic Assistant
-        </p>
+          </p>
         </div>
-
 
         {/* Form surface */}
         <div className="rounded-3xl border border-white/[0.08] bg-[#11162A]/80 p-7 shadow-[0_0_80px_rgba(139,92,246,0.08)] backdrop-blur-2xl sm:p-10">
@@ -61,7 +119,7 @@ export default function LoginPage() {
           <div className="mb-8">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-200">
               <ShieldCheck size={14} />
-              Secure academic access
+              Secure academic access · Demo mode
             </div>
 
             <h1 className="text-3xl font-semibold tracking-tight">
@@ -69,8 +127,67 @@ export default function LoginPage() {
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              Sign in to continue your academic journey with NEXORA.
+              Select your role, then sign in to continue your academic journey with NEXORA.
             </p>
+          </div>
+
+          {/* Role selector */}
+          <div className="mb-6">
+            <p className="mb-3 text-sm font-medium text-slate-300">
+              Sign in as
+            </p>
+
+            <div className="grid gap-2.5">
+              {ROLES.map((roleOption) => {
+                const Icon = roleOption.icon;
+                const isSelected = selectedRole === roleOption.value;
+
+                return (
+                  <button
+                    key={roleOption.value}
+                    type="button"
+                    onClick={() => setSelectedRole(roleOption.value)}
+                    className={`flex items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 ${
+                      isSelected
+                        ? `${roleOption.border} bg-white/[0.06] shadow-sm`
+                        : "border-white/[0.06] bg-[#080B18]/40 hover:border-white/[0.12] hover:bg-white/[0.03]"
+                    }`}
+                  >
+                    {/* Role icon */}
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${roleOption.accent} shadow-sm transition-opacity ${
+                        isSelected ? "opacity-100" : "opacity-50"
+                      }`}
+                    >
+                      <Icon size={17} className="text-white" />
+                    </div>
+
+                    {/* Role info */}
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-semibold leading-5 transition-colors ${isSelected ? "text-white" : "text-slate-400"}`}>
+                        {roleOption.label}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+                        {roleOption.description}
+                      </p>
+                    </div>
+
+                    {/* Radio indicator */}
+                    <div
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                        isSelected
+                          ? "border-violet-400 bg-violet-400"
+                          : "border-slate-600"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Login form */}
@@ -168,15 +285,30 @@ export default function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-all duration-300 hover:from-violet-500 hover:to-violet-400 hover:shadow-violet-500/30 active:scale-[0.98]"
+              disabled={isLoggingIn}
+              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-all duration-300 hover:from-violet-500 hover:to-violet-400 hover:shadow-violet-500/30 active:scale-[0.98] disabled:opacity-70"
             >
-              Sign in to NEXORA
-              <ArrowRight
-                size={17}
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              />
+              {isLoggingIn ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Signing in…
+                </>
+              ) : (
+                <>
+                  Sign in as {ROLE_META[selectedRole].label}
+                  <ArrowRight
+                    size={17}
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                  />
+                </>
+              )}
             </button>
           </form>
+
+          {/* Demo notice */}
+          <div className="mt-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3 text-xs leading-5 text-amber-200/70">
+            <strong className="text-amber-300">Demo mode:</strong> Any email and password will work. Your selected role is saved in localStorage and restored on refresh.
+          </div>
 
           {/* Signup */}
           <div className="mt-7 text-center text-sm text-slate-400">

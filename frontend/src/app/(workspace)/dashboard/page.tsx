@@ -1,15 +1,15 @@
 
 "use client";
+
+import { useDemoAuth } from "@/lib/demo-auth-context";
 import AcademicStaffDashboard from "@/components/dashboard/AcademicStaffDashboard";
 import AdministratorDashboard from "@/components/dashboard/AdministratorDashboard";
-import { DEMO_ROLE } from "@/lib/demo-user";
 
 import {
   BookOpen,
   ClipboardList,
   NotebookPen,
   ArrowUpRight,
-  
   GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
@@ -64,16 +64,17 @@ function NexoraMark({
 }
 
 export default function DashboardPage() {
-  const dashboardRole = DEMO_ROLE;
+  const { role } = useDemoAuth();
 
-  if (dashboardRole === "academic_staff") {
+  if (role === "academic_staff") {
     return <AcademicStaffDashboard />;
   }
 
-  if (dashboardRole === "administrator") {
+  if (role === "administrator") {
     return <AdministratorDashboard />;
   }
 
+  // Student (or while role is null — workspace layout handles redirect)
   return (
     <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8">
 
@@ -83,14 +84,13 @@ export default function DashboardPage() {
 
         <div className="relative z-10 max-w-2xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-xs font-medium text-violet-300">
-            
-          Your Intelligent Academic Workspace
+            Your Intelligent Academic Workspace
           </div>
 
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Welcome back,
             <span className="block bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">
-              Academic Staff!
+              Student!
             </span>
           </h2>
 
@@ -103,7 +103,6 @@ export default function DashboardPage() {
             href="/assistant"
             className="mt-7 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:-translate-y-0.5 hover:shadow-violet-500/30"
           >
-            
             Start with AI Assistant
             <ArrowUpRight size={16} />
           </Link>
@@ -211,7 +210,6 @@ export default function DashboardPage() {
 
         <div className="rounded-2xl border border-white/[0.08] bg-[#11162A] p-6">
           <div className="flex items-center gap-3">
-            
             <h3 className="font-semibold text-white">
               Recent Activity
             </h3>
