@@ -21,6 +21,11 @@ const pageTitles: Record<string, string> = {
   "/quiz-management": "Quiz Management",
   "/notes": "Notes",
   "/academic": "Academic Progress",
+  "/academic-services": "Academic Services",
+  "/academic-services/courses": "Assigned Courses",
+  "/academic-services/resources": "Course Resources",
+  "/academic-services/policies": "Academic Policies",
+  "/academic-services/students": "Student Progress",
   "/administration": "Explainable RAG Overview",
   "/administration/knowledge-base": "Knowledge Base Management",
   "/administration/corpus": "Corpus & Mathematical Explorer",
@@ -45,7 +50,11 @@ export default function WorkspaceHeader({ role }: WorkspaceHeaderProps) {
   const pathname = usePathname();
 
   const currentTitle =
-    (pathname.startsWith("/courses/")
+    (pathname.startsWith("/academic-services/courses/")
+      ? "Course Details"
+      : pathname.startsWith("/academic-services/students/")
+      ? "Student Record Summary"
+      : pathname.startsWith("/courses/")
       ? pathname.endsWith("/materials")
         ? "Course Materials"
         : "Course Details"

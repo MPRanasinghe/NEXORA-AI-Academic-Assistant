@@ -100,7 +100,7 @@ export default function WorkspaceSidebar({
       },
       {
         label: "Academic Services",
-        href: "/academic",
+        href: "/academic-services",
         icon: GraduationCap,
       },
     ],

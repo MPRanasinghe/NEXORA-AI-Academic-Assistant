@@ -262,7 +262,7 @@ export default function AcademicStaffDashboard() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/quizzes/manage"
+              href="/quiz-management/create"
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:brightness-110"
             >
               <Plus size={17} />
@@ -270,7 +270,7 @@ export default function AcademicStaffDashboard() {
             </Link>
 
             <Link
-              href="/academic"
+              href="/academic-services"
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/[0.08]"
             >
               View Academic Services
@@ -386,7 +386,7 @@ export default function AcademicStaffDashboard() {
           </div>
 
           <Link
-            href="/academic"
+            href="/academic-services/courses"
             className="mt-6 flex items-center justify-between border-t border-white/[0.07] pt-4 text-sm text-violet-300 transition hover:text-violet-200"
           >
             View courses
@@ -407,7 +407,7 @@ export default function AcademicStaffDashboard() {
               title: "Create Quiz",
               description: "Build assessments for students",
               icon: ClipboardList,
-              href: "/quizzes/manage",
+              href: "/quiz-management/create",
               color: "text-violet-400",
               bg: "bg-violet-500/10",
             },
@@ -415,7 +415,7 @@ export default function AcademicStaffDashboard() {
               title: "Manage Courses",
               description: "Organize your academic courses",
               icon: BookOpen,
-              href: "/academic",
+              href: "/academic-services/courses",
               color: "text-cyan-400",
               bg: "bg-cyan-500/10",
             },
@@ -423,7 +423,7 @@ export default function AcademicStaffDashboard() {
               title: "Student Insights",
               description: "Review learning performance",
               icon: Users,
-              href: "/academic",
+              href: "/academic-services/students",
               color: "text-blue-400",
               bg: "bg-blue-500/10",
             },
@@ -431,7 +431,7 @@ export default function AcademicStaffDashboard() {
               title: "Upload Resources",
               description: "Share academic materials",
               icon: FileUp,
-              href: "/academic",
+              href: "/academic-services/resources",
               color: "text-emerald-400",
               bg: "bg-emerald-500/10",
             },
