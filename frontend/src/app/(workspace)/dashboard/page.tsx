@@ -11,6 +11,7 @@ import {
   NotebookPen,
   ArrowUpRight,
   GraduationCap,
+  BookOpenCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,6 +29,13 @@ const quickActions = [
     icon: BookOpen,
     href: "/learning",
     color: "cyan",
+  },
+  {
+    title: "My Courses",
+    description: "Review your current courses and course materials.",
+    icon: BookOpenCheck,
+    href: "/courses",
+    color: "violet",
   },
   {
     title: "Take a Quiz",
@@ -195,16 +203,25 @@ export default function DashboardPage() {
       {/* Academic Overview Placeholder */}
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-white/[0.08] bg-[#11162A] p-6">
-          <div className="flex items-center gap-3">
-            <GraduationCap size={20} className="text-cyan-300" />
-            <h3 className="font-semibold text-white">
-              Academic Overview
-            </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <GraduationCap size={20} className="text-cyan-300" />
+              <h3 className="font-semibold text-white">
+                Academic Overview
+              </h3>
+            </div>
+            <Link
+              href="/academic"
+              className="inline-flex items-center gap-1 text-xs text-violet-300 transition hover:text-violet-200"
+            >
+              View Progress
+              <ArrowUpRight size={14} />
+            </Link>
           </div>
 
           <p className="mt-4 text-sm leading-6 text-slate-400">
-            Your academic information and upcoming activities
-            will appear here when connected to the platform.
+            Track your degree completion, semester GPA history, cumulative GPA,
+            and academic standing.
           </p>
         </div>
 

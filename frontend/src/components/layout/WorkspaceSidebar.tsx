@@ -10,7 +10,6 @@ import {
   NotebookPen,
   GraduationCap,
   Settings,
-  ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
@@ -72,6 +71,11 @@ export default function WorkspaceSidebar({
         icon: BookOpen,
       },
       {
+        label: "Courses",
+        href: "/courses",
+        icon: BookOpenCheck,
+      },
+      {
         label: "Quiz Center",
         href: "/quizzes",
         icon: ClipboardList,
@@ -82,7 +86,7 @@ export default function WorkspaceSidebar({
         icon: NotebookPen,
       },
       {
-        label: "Academic Services",
+        label: "Academic Progress",
         href: "/academic",
         icon: GraduationCap,
       },

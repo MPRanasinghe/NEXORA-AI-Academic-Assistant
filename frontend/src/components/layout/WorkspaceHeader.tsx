@@ -16,10 +16,11 @@ const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/assistant": "AI Assistant",
   "/learning": "Learning",
+  "/courses": "My Courses",
   "/quizzes": "Quizzes",
   "/quiz-management": "Quiz Management",
   "/notes": "Notes",
-  "/academic": "Academic Services",
+  "/academic": "Academic Progress",
   "/administration": "Explainable RAG Overview",
   "/administration/knowledge-base": "Knowledge Base Management",
   "/administration/corpus": "Corpus & Mathematical Explorer",
@@ -44,7 +45,11 @@ export default function WorkspaceHeader({ role }: WorkspaceHeaderProps) {
   const pathname = usePathname();
 
   const currentTitle =
-    pageTitles[pathname] ??
+    (pathname.startsWith("/courses/")
+      ? pathname.endsWith("/materials")
+        ? "Course Materials"
+        : "Course Details"
+      : pageTitles[pathname]) ??
     Object.entries(pageTitles).find(([path]) =>
       pathname.startsWith(`${path}/`)
     )?.[1] ??
