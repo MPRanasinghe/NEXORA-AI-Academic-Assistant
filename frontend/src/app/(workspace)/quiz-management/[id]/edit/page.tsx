@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 import {
   saveManagedQuiz,
+  useDeletedQuizIds,
   useManagedQuizzes,
   type ManagedQuiz,
   type QuizQuestion,
 } from "@/lib/quiz-storage";
+import { getQuizById } from "@/lib/quiz-catalog";
 
 type Question = QuizQuestion;
 
@@ -37,7 +39,9 @@ export default function EditQuizPage() {
     () => true,
     () => false,
   );
-  const storedQuiz = useManagedQuizzes().find((item) => item.id === id) ?? null;
+  const managedQuizzes = useManagedQuizzes();
+  const deletedQuizIds = useDeletedQuizIds();
+  const storedQuiz = getQuizById(id, managedQuizzes, deletedQuizIds);
 
   const [saving, setSaving] = useState(false);
   const [editedQuiz, setEditedQuiz] = useState<ManagedQuiz | null>(null);

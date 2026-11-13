@@ -672,8 +672,8 @@ export default function AssistantPage() {
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[9px] text-slate-600">
               <ShieldCheck size={12} className="text-cyan-400/70" />
               <span>
-                Demo mode: attachments stay in this browser and are not
-                uploaded or analyzed.
+                Demo mode: file contents are not uploaded or analyzed; only
+                attachment details are saved with local conversation history.
               </span>
               <span className="hidden sm:inline">·</span>
               <span>Enter to send · Shift+Enter for a new line</span>

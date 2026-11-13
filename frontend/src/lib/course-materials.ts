@@ -1,9 +1,13 @@
+import type { StaffCourseResource } from "@/lib/academic-staff-types";
+
 export type CourseMaterialType =
   | "Lecture slides"
   | "Lecture notes"
   | "Reading material"
   | "PDF document"
-  | "Supporting resource";
+  | "Supporting resource"
+  | "Lab sheet"
+  | "Syllabus & Guide";
 
 export interface CourseMaterial {
   id: string;
@@ -15,6 +19,37 @@ export interface CourseMaterial {
   fileSize: string;
   dateAdded: string;
   externalResourceUrl?: string;
+  previewContent?: string;
+  source?: "Academic Staff";
+}
+
+export function getStaffCourseMaterials(
+  studentCourseId: string,
+  studentCourseCode: string,
+  resources: StaffCourseResource[],
+): CourseMaterial[] {
+  const normalizedCode = studentCourseCode.trim().toUpperCase();
+  return resources
+    .filter(
+      (resource) => resource.courseCode.trim().toUpperCase() === normalizedCode,
+    )
+    .map((resource) => ({
+      id: `staff-${resource.id}`,
+      courseId: studentCourseId,
+      title: resource.title,
+      description: resource.description,
+      resourceType: resource.type,
+      ...(resource.fileName ? { fileName: resource.fileName } : {}),
+      fileSize: resource.fileSize,
+      dateAdded: resource.dateAdded,
+      ...(resource.externalUrl
+        ? { externalResourceUrl: resource.externalUrl }
+        : {}),
+      ...(resource.previewContent
+        ? { previewContent: resource.previewContent }
+        : {}),
+      source: "Academic Staff" as const,
+    }));
 }
 
 export const COURSE_MATERIALS: CourseMaterial[] = [

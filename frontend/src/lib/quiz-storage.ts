@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 
 export const QUIZ_STORAGE_KEY = "nexora-managed-quizzes";
+export const DELETED_QUIZ_IDS_KEY = "nexora-deleted-quizzes";
 
 export type QuizStatus = "Published" | "Draft";
 
@@ -24,6 +25,7 @@ export type ManagedQuiz = {
   questions: QuizQuestion[];
   questionCount: number;
   status: QuizStatus;
+  maxAttempts?: number;
   createdAt?: string;
   attempts?: number;
 };
@@ -103,6 +105,10 @@ export function normalizeManagedQuiz(value: unknown): ManagedQuiz | null {
     questions,
     questionCount: questions.length,
     status: value.status === "Published" ? "Published" : "Draft",
+    maxAttempts:
+      Number.isInteger(Number(value.maxAttempts)) && Number(value.maxAttempts) > 0
+        ? Number(value.maxAttempts)
+        : 1,
     ...(typeof value.createdAt === "string"
       ? { createdAt: value.createdAt }
       : {}),
@@ -142,10 +148,40 @@ export function getQuizStorageSnapshot() {
   }
 }
 
+export function getDeletedQuizIdsSnapshot() {
+  if (typeof window === "undefined") return EMPTY_SNAPSHOT;
+  try {
+    return window.localStorage.getItem(DELETED_QUIZ_IDS_KEY) ?? EMPTY_SNAPSHOT;
+  } catch (error) {
+    console.error("Failed to read deleted quiz IDs:", error);
+    return EMPTY_SNAPSHOT;
+  }
+}
+
+export function parseDeletedQuizIds(snapshot: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(snapshot);
+    if (!Array.isArray(parsed)) {
+      console.error("Deleted quiz IDs must be stored as an array.");
+      return [];
+    }
+    return [...new Set(parsed.filter((id): id is string => typeof id === "string"))];
+  } catch (error) {
+    console.error("Failed to parse deleted quiz IDs:", error);
+    return [];
+  }
+}
+
 function subscribeToQuizStorage(callback: () => void) {
   if (typeof window === "undefined") return () => {};
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === QUIZ_STORAGE_KEY || event.key === null) callback();
+    if (
+      event.key === QUIZ_STORAGE_KEY ||
+      event.key === DELETED_QUIZ_IDS_KEY ||
+      event.key === null
+    ) {
+      callback();
+    }
   };
   window.addEventListener("storage", handleStorage);
   window.addEventListener(CHANGE_EVENT, callback);
@@ -158,10 +194,25 @@ function subscribeToQuizStorage(callback: () => void) {
 export function useManagedQuizzes() {
   const snapshot = useSyncExternalStore(
     subscribeToQuizStorage,
-    getQuizStorageSnapshot,
+    () => `${getQuizStorageSnapshot()}\u0000${getDeletedQuizIdsSnapshot()}`,
+    () => `${EMPTY_SNAPSHOT}\u0000${EMPTY_SNAPSHOT}`,
+  );
+  return useMemo(() => {
+    const [quizzesSnapshot, deletedSnapshot] = snapshot.split("\u0000");
+    const deletedIds = new Set(parseDeletedQuizIds(deletedSnapshot ?? EMPTY_SNAPSHOT));
+    return parseManagedQuizzes(quizzesSnapshot ?? EMPTY_SNAPSHOT).filter(
+      (quiz) => !deletedIds.has(quiz.id),
+    );
+  }, [snapshot]);
+}
+
+export function useDeletedQuizIds() {
+  const snapshot = useSyncExternalStore(
+    subscribeToQuizStorage,
+    getDeletedQuizIdsSnapshot,
     () => EMPTY_SNAPSHOT,
   );
-  return useMemo(() => parseManagedQuizzes(snapshot), [snapshot]);
+  return useMemo(() => parseDeletedQuizIds(snapshot), [snapshot]);
 }
 
 function writeQuizzes(quizzes: ManagedQuiz[]) {
@@ -169,6 +220,17 @@ function writeQuizzes(quizzes: ManagedQuiz[]) {
     throw new Error("Quiz storage is only available in the browser.");
   }
   window.localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(quizzes));
+  window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+function writeDeletedQuizIds(ids: string[]) {
+  if (typeof window === "undefined") {
+    throw new Error("Quiz storage is only available in the browser.");
+  }
+  window.localStorage.setItem(
+    DELETED_QUIZ_IDS_KEY,
+    JSON.stringify([...new Set(ids)]),
+  );
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
@@ -181,9 +243,34 @@ export function saveManagedQuiz(quiz: ManagedQuiz) {
   if (existingIndex >= 0) quizzes[existingIndex] = normalized;
   else quizzes.push(normalized);
   writeQuizzes(quizzes);
+  writeDeletedQuizIds(
+    parseDeletedQuizIds(getDeletedQuizIdsSnapshot()).filter(
+      (id) => id !== normalized.id,
+    ),
+  );
 }
 
 export function deleteManagedQuiz(id: string) {
   const quizzes = parseManagedQuizzes(getQuizStorageSnapshot());
   writeQuizzes(quizzes.filter((quiz) => quiz.id !== id));
+  writeDeletedQuizIds([
+    ...parseDeletedQuizIds(getDeletedQuizIdsSnapshot()),
+    id,
+  ]);
+}
+
+export function isQuizPlayable(quiz: ManagedQuiz): boolean {
+  return (
+    quiz.status === "Published" &&
+    quiz.questions.length > 0 &&
+    quiz.questions.every(
+      (question) =>
+        question.question.trim().length > 0 &&
+        question.options.length >= 2 &&
+        question.options.every((option) => option.trim().length > 0) &&
+        Number.isInteger(question.correctAnswer) &&
+        question.correctAnswer >= 0 &&
+        question.correctAnswer < question.options.length,
+    )
+  );
 }

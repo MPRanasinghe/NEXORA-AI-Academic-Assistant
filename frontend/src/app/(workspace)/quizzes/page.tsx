@@ -13,76 +13,13 @@ import {
   GraduationCap,
   CircleHelp,
 } from "lucide-react";
-import { useManagedQuizzes } from "@/lib/quiz-storage";
-
-const quizzes = [
-  {
-    id: "quiz-01",
-    title: "Introduction to Machine Learning",
-    subject: "Artificial Intelligence",
-    description: "Test your understanding of ML fundamentals, algorithms, and model training.",
-    questions: 20,
-    duration: 30,
-    difficulty: "Intermediate",
-    status: "Available",
-    attempts: 124,
-  },
-  {
-    id: "quiz-02",
-    title: "Database Management Systems",
-    subject: "Computer Science",
-    description: "Review relational databases, SQL queries, normalization, and transactions.",
-    questions: 15,
-    duration: 25,
-    difficulty: "Beginner",
-    status: "Available",
-    attempts: 89,
-  },
-  {
-    id: "quiz-03",
-    title: "Data Structures and Algorithms",
-    subject: "Computer Science",
-    description: "Evaluate your knowledge of data structures, complexity, and algorithms.",
-    questions: 25,
-    duration: 45,
-    difficulty: "Advanced",
-    status: "Available",
-    attempts: 67,
-  },
-  {
-    id: "quiz-04",
-    title: "Software Engineering Principles",
-    subject: "Software Engineering",
-    description: "Practice software design, development methodologies, and testing.",
-    questions: 20,
-    duration: 35,
-    difficulty: "Intermediate",
-    status: "Available",
-    attempts: 102,
-  },
-  {
-    id: "quiz-05",
-    title: "Computer Networks",
-    subject: "Networking",
-    description: "Explore network protocols, architectures, and communication concepts.",
-    questions: 15,
-    duration: 20,
-    difficulty: "Beginner",
-    status: "Available",
-    attempts: 54,
-  },
-  {
-    id: "quiz-06",
-    title: "Artificial Intelligence Fundamentals",
-    subject: "Artificial Intelligence",
-    description: "Assess your knowledge of search, reasoning, and intelligent systems.",
-    questions: 30,
-    duration: 50,
-    difficulty: "Advanced",
-    status: "Available",
-    attempts: 43,
-  },
-];
+import { getStudentVisibleQuizzes } from "@/lib/quiz-catalog";
+import {
+  useDeletedQuizIds,
+  useManagedQuizzes,
+} from "@/lib/quiz-storage";
+import { useStudentAcademicRecord } from "@/lib/academic-storage";
+import { useQuizAttempts } from "@/lib/quiz-attempt-storage";
 
 type Difficulty = "All Levels" | "Beginner" | "Intermediate" | "Advanced";
 
@@ -90,34 +27,13 @@ export default function QuizzesPage() {
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("All Levels");
   const managedQuizzes = useManagedQuizzes();
+  const deletedQuizIds = useDeletedQuizIds();
+  const { record } = useStudentAcademicRecord();
+  const attempts = useQuizAttempts(record.studentId);
 
   const availableQuizzes = useMemo(() => {
-    const sampleIds = new Set(quizzes.map((quiz) => quiz.id));
-    const availableSamples = quizzes.filter(
-      (quiz) =>
-        managedQuizzes.find((managed) => managed.id === quiz.id)?.status !==
-        "Draft",
-    );
-    const publishedManagedQuizzes = managedQuizzes
-      .filter(
-        (quiz) =>
-          quiz.status === "Published" &&
-          quiz.questions.length > 0 &&
-          !sampleIds.has(quiz.id),
-      )
-      .map((quiz) => ({
-        id: quiz.id,
-        title: quiz.title,
-        subject: quiz.subject,
-        description: quiz.description,
-        questions: quiz.questions.length,
-        duration: quiz.duration,
-        difficulty: quiz.difficulty,
-        status: "Available",
-        attempts: quiz.attempts ?? 0,
-      }));
-    return [...availableSamples, ...publishedManagedQuizzes];
-  }, [managedQuizzes]);
+    return getStudentVisibleQuizzes(managedQuizzes, deletedQuizIds);
+  }, [deletedQuizIds, managedQuizzes]);
 
   const filteredQuizzes = useMemo(() => {
     return availableQuizzes.filter((quiz) => {
@@ -131,6 +47,17 @@ export default function QuizzesPage() {
       return matchesSearch && matchesDifficulty;
     });
   }, [availableQuizzes, search, difficulty]);
+  const submittedAttempts = attempts.filter(
+    (attempt) => attempt.status === "submitted",
+  );
+  const averageScore = submittedAttempts.length
+    ? Math.round(
+        submittedAttempts.reduce(
+          (total, attempt) => total + (attempt.scorePercentage ?? 0),
+          0,
+        ) / submittedAttempts.length,
+      )
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-7 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-10 xl:px-12">
@@ -159,13 +86,13 @@ export default function QuizzesPage() {
         <StatCard
           icon={<CheckCircle2 size={20} />}
           label="Completed"
-          value="12"
+          value={String(submittedAttempts.length)}
           color="cyan"
         />
         <StatCard
           icon={<CircleHelp size={20} />}
           label="Average Score"
-          value="84%"
+          value={averageScore === null ? "—" : `${averageScore}%`}
           color="emerald"
         />
       </div>
@@ -241,13 +168,18 @@ export default function QuizzesPage() {
             <div className="relative mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-400 sm:text-xs">
               <span className="flex items-center gap-1.5">
                 <CircleHelp size={14} className="text-violet-300/80" />
-                {quiz.questions} Questions
+                {quiz.questions.length} Questions
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock size={14} className="text-cyan-300/80" />
                 {quiz.duration} Minutes
               </span>
-              <span>{quiz.attempts} attempts</span>
+              <span>
+                {attempts.filter((attempt) => attempt.quizId === quiz.id).length}{" "}
+                {attempts.filter((attempt) => attempt.quizId === quiz.id).length === 1
+                  ? "attempt"
+                  : "attempts"}
+              </span>
             </div>
 
             <div className="relative mt-5 border-t border-white/[0.07] pt-4">
@@ -255,7 +187,7 @@ export default function QuizzesPage() {
                 href={`/quizzes/${quiz.id}`}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-400/15 bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-violet-950/25 transition duration-200 hover:-translate-y-px hover:border-violet-300/25 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg hover:shadow-violet-900/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60"
               >
-                Start Quiz
+                View Quiz
                 <Play size={15} />
               </Link>
             </div>
@@ -273,8 +205,55 @@ export default function QuizzesPage() {
         </div>
       )}
 
-      <p className="border-t border-white/[0.05] pt-5 text-center text-[11px] text-slate-500">
-        Demo quiz content · Quiz results will be connected to your academic profile.
+      <section className="space-y-3 border-t border-white/[0.05] pt-6">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Recent quiz attempts</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Practice results are separate from official grades and transcripts.
+          </p>
+        </div>
+        {submittedAttempts.length > 0 ? (
+          <div className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.08] bg-[#11162A]">
+            {[...submittedAttempts]
+              .sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
+              .map((attempt) => (
+                <div
+                  key={attempt.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      {attempt.quizTitle}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {attempt.submittedAt
+                        ? new Date(attempt.submittedAt).toLocaleString()
+                        : "Submitted"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-semibold text-violet-300">
+                      {attempt.scorePercentage ?? 0}%
+                    </span>
+                    <Link
+                      href={`/quizzes/${attempt.quizId}/review?attemptId=${encodeURIComponent(attempt.id)}`}
+                      className="text-xs font-medium text-cyan-300 hover:text-cyan-200"
+                    >
+                      Review
+                    </Link>
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-white/[0.12] px-4 py-6 text-center text-sm text-slate-500">
+            Completed attempts will appear here.
+          </p>
+        )}
+      </section>
+
+      <p className="text-center text-[11px] text-slate-500">
+        Demonstration quiz content and locally stored practice results.
       </p>
     </div>
   );

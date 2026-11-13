@@ -2,6 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Search,
   BookOpen,
@@ -38,6 +39,7 @@ type Resource = {
   pages: number;
   updated: string;
   size: string;
+  courseId?: string;
 };
 
 const categories: ResourceCategory[] = [
@@ -54,7 +56,8 @@ const resources: Resource[] = [
     description:
       "Fundamental concepts of AI, intelligent agents, problem-solving techniques, and the foundations of artificial intelligence.",
     category: "Lecture Notes",
-    course: "ICT305",
+    course: "SE302",
+    courseId: "crs-302",
     lecturer: "Dr. Academic Staff",
     type: "PDF",
     pages: 42,
@@ -67,7 +70,8 @@ const resources: Resource[] = [
     description:
       "An introduction to relational databases, database architecture, SQL, normalization, and transaction management.",
     category: "Lecture Notes",
-    course: "ICT204",
+    course: "CS109",
+    courseId: "crs-109",
     lecturer: "Dr. Academic Staff",
     type: "PDF",
     pages: 56,
@@ -80,7 +84,8 @@ const resources: Resource[] = [
     description:
       "Practical programming exercises covering variables, control structures, functions, arrays, and problem-solving.",
     category: "Tutorials",
-    course: "ICT101",
+    course: "CS101",
+    courseId: "crs-101",
     lecturer: "Academic Department",
     type: "PDF",
     pages: 28,
@@ -93,7 +98,8 @@ const resources: Resource[] = [
     description:
       "A research overview of supervised learning, unsupervised learning, model evaluation, and emerging applications.",
     category: "Research Papers",
-    course: "ICT305",
+    course: "SE302",
+    courseId: "crs-302",
     lecturer: "Research Collection",
     type: "PDF",
     pages: 34,
@@ -106,7 +112,8 @@ const resources: Resource[] = [
     description:
       "Core software engineering principles, development methodologies, requirements analysis, and software design.",
     category: "Lecture Notes",
-    course: "ICT204",
+    course: "SE202",
+    courseId: "crs-202",
     lecturer: "Academic Department",
     type: "PDF",
     pages: 48,
@@ -132,7 +139,8 @@ const resources: Resource[] = [
     description:
       "Exercises covering network models, IP addressing, routing, protocols, and network troubleshooting.",
     category: "Tutorials",
-    course: "ICT204",
+    course: "SE207",
+    courseId: "crs-207",
     lecturer: "Academic Department",
     type: "PDF",
     pages: 22,
@@ -203,12 +211,6 @@ export default function LearningPage() {
     );
   };
 
-  const handleDownload = (resource: Resource) => {
-    alert(
-      `"${resource.title}" is a demonstration resource. Actual downloads will be available when the backend is connected.`
-    );
-  };
-
   return (
     <div className="min-h-full bg-[#080B18] px-4 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -227,8 +229,8 @@ export default function LearningPage() {
             </h1>
 
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-              Explore academic materials, lecture notes, tutorials,
-              and research resources from your university knowledge library.
+              Explore sample materials, lecture notes, tutorials, and research
+              references. These demo records are not an official library.
             </p>
           </div>
 
@@ -502,13 +504,23 @@ export default function LearningPage() {
                     </button>
 
                     <button
-                      onClick={() => handleDownload(resource)}
-                      className="flex items-center justify-center gap-2 rounded-lg bg-violet-500/10 px-3 py-2.5 text-xs text-violet-300 transition hover:bg-violet-500/20"
+                      type="button"
+                      disabled
+                      title="Downloads are unavailable in demo mode."
+                      className="flex cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2.5 text-xs text-slate-500"
                     >
                       <Download size={15} />
-                      <span className="hidden sm:inline">Download</span>
+                      <span className="hidden sm:inline">Unavailable</span>
                     </button>
                   </div>
+                  {resource.courseId && (
+                    <Link
+                      href={`/courses/${resource.courseId}/materials`}
+                      className="mt-3 block text-center text-xs font-medium text-cyan-300 transition hover:text-cyan-200"
+                    >
+                      Open course materials
+                    </Link>
+                  )}
                 </article>
               ))}
             </div>
@@ -594,9 +606,8 @@ export default function LearningPage() {
             </div>
 
             <div className="mt-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3 text-xs leading-5 text-amber-200/70">
-              This is a demo resource. The document preview and download
-              will become available when the university knowledge
-              repository is connected.
+              This demo entry displays descriptive metadata only. It is not an
+              uploaded document and has no downloadable file.
             </div>
 
             <div className="mt-5 flex gap-3">
@@ -608,11 +619,13 @@ export default function LearningPage() {
               </button>
 
               <button
-                onClick={() => handleDownload(selectedResource)}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-sm font-medium text-white hover:bg-violet-500"
+                type="button"
+                disabled
+                title="Downloads are unavailable in demo mode."
+                className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-white/[0.04] py-3 text-sm font-medium text-slate-500"
               >
                 <Download size={16} />
-                Download
+                Unavailable
               </button>
             </div>
           </div>

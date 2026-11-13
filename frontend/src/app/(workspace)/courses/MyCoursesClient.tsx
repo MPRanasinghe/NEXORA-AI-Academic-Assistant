@@ -13,22 +13,35 @@ import {
 } from "lucide-react";
 import StudentRouteGuard from "@/components/layout/StudentRouteGuard";
 import { useStudentAcademicRecord } from "@/lib/academic-storage";
+import { useStudentEnrollments } from "@/lib/student-enrollments";
 
 export default function MyCoursesPage() {
   const { record } = useStudentAcademicRecord();
+  const enrollments = useStudentEnrollments(record.studentId);
   const [search, setSearch] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("current");
   const currentTerm = record.terms.find((term) => term.isCurrent);
 
   const courses = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return record.terms
-      .filter(
-        (term) => selectedTerm === "all" || term.id === (selectedTerm === "current" ? currentTerm?.id : selectedTerm),
-      )
-      .flatMap((term) =>
-        term.courses.map((course) => ({ course, term })),
-      )
+    return enrollments
+      .filter((enrollment) => {
+        if (selectedTerm === "all") return true;
+        if (selectedTerm === "current") {
+          return (
+            enrollment.status === "Enrolled" &&
+            enrollment.termId === currentTerm?.id
+          );
+        }
+        return enrollment.termId === selectedTerm;
+      })
+      .flatMap((enrollment) => {
+        const term = record.terms.find((item) => item.id === enrollment.termId);
+        const course = term?.courses.find(
+          (item) => item.id === enrollment.courseId,
+        );
+        return term && course ? [{ course, term, enrollment }] : [];
+      })
       .filter(({ course }) => {
         if (!query) return true;
         return (
@@ -37,7 +50,12 @@ export default function MyCoursesPage() {
         );
       })
       .sort((a, b) => Number(b.term.isCurrent) - Number(a.term.isCurrent));
-  }, [currentTerm?.id, record.terms, search, selectedTerm]);
+  }, [currentTerm?.id, enrollments, record.terms, search, selectedTerm]);
+
+  const currentEnrollmentCount = enrollments.filter(
+    (enrollment) =>
+      enrollment.status === "Enrolled" && enrollment.termId === currentTerm?.id,
+  ).length;
 
   return (
     <StudentRouteGuard>
@@ -54,8 +72,8 @@ export default function MyCoursesPage() {
                 My Courses
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Explore courses recorded in your academic profile and open
-                course-specific learning materials.
+                Review your enrolled courses and their course-specific learning
+                materials.
               </p>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#080B18]/50 px-4 py-3">
@@ -64,7 +82,7 @@ export default function MyCoursesPage() {
               </div>
               <div>
                 <p className="text-xl font-semibold text-white">
-                  {currentTerm?.courses.length ?? 0}
+                  {currentEnrollmentCount}
                 </p>
                 <p className="text-xs text-slate-400">Current-term courses</p>
               </div>
@@ -73,9 +91,9 @@ export default function MyCoursesPage() {
         </section>
 
         <section className="rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] px-4 py-3 text-xs leading-5 text-cyan-100/70">
-          Courses are displayed from your academic records. Course descriptions
-          and materials are illustrative demo content, not official
-          institutional resources.
+          Enrollments are stored separately from academic grades. Completed
+          course results remain available in Academic Progress; course
+          descriptions and materials are illustrative demo content.
         </section>
 
         <section className="space-y-5">
@@ -92,7 +110,7 @@ export default function MyCoursesPage() {
               </h3>
               <p className="mt-1 text-sm text-slate-500">
                 {currentTerm
-                  ? `${currentTerm.academicYear} · ${currentTerm.semesterCredits} term credits`
+                  ? `${currentTerm.academicYear} · ${currentEnrollmentCount} enrolled courses`
                   : "Choose an academic term to view its recorded courses."}
               </p>
             </div>
@@ -126,6 +144,11 @@ export default function MyCoursesPage() {
                     All terms
                   </option>
                   {record.terms
+                    .filter((term) =>
+                      enrollments.some(
+                        (enrollment) => enrollment.termId === term.id,
+                      ),
+                    )
                     .filter((term) => !term.isCurrent)
                     .map((term) => (
                       <option
@@ -147,7 +170,7 @@ export default function MyCoursesPage() {
 
           {courses.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {courses.map(({ course, term }) => (
+              {courses.map(({ course, term, enrollment }) => (
                 <Link
                   key={course.id}
                   href={`/courses/${course.id}`}
@@ -166,6 +189,15 @@ export default function MyCoursesPage() {
                         Current
                       </span>
                     )}
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                        enrollment.status === "Enrolled"
+                          ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                          : "border-white/[0.08] bg-white/[0.03] text-slate-400"
+                      }`}
+                    >
+                      {enrollment.status}
+                    </span>
                   </div>
 
                   <div className="mt-5 flex-1">

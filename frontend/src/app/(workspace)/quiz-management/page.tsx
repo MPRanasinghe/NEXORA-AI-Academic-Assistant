@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -18,10 +18,11 @@ import { useRouter } from "next/navigation";
 import {
   deleteManagedQuiz,
   saveManagedQuiz,
+  useDeletedQuizIds,
   useManagedQuizzes,
   type ManagedQuiz,
 } from "@/lib/quiz-storage";
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import { getQuizById, getQuizCatalog } from "@/lib/quiz-catalog";
 
 type Quiz = {
   id: string;
@@ -33,77 +34,16 @@ type Quiz = {
   status: "Published" | "Draft";
 };
 
-const initialQuizzes: Quiz[] = [
-  {
-    id: "quiz-01",
-    title: "Introduction to Machine Learning",
-    subject: "Artificial Intelligence",
-    questions: 8,
-    duration: 20,
-    attempts: 124,
-    status: "Published",
-  },
-  {
-    id: "quiz-02",
-    title: "Database Fundamentals",
-    subject: "Database Systems",
-    questions: 10,
-    duration: 25,
-    attempts: 86,
-    status: "Published",
-  },
-  {
-    id: "quiz-03",
-    title: "Data Structures and Algorithms",
-    subject: "Computer Science",
-    questions: 15,
-    duration: 30,
-    attempts: 0,
-    status: "Draft",
-  },
-];
-
 export default function QuizManagementPage() {
   const router = useRouter();
-  const { role } = useDemoAuth();
   const savedQuizzes = useManagedQuizzes();
-
-  // Role guard: only academic_staff may access this page
-  useEffect(() => {
-    if (role !== null && role !== "academic_staff") {
-      router.replace("/dashboard");
-    }
-  }, [role, router]);
+  const deletedQuizIds = useDeletedQuizIds();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
-  const [hiddenSampleIds, setHiddenSampleIds] = useState<string[]>([]);
+  const [previewQuiz, setPreviewQuiz] = useState<ManagedQuiz | null>(null);
 
   const quizzes = useMemo(() => {
-    const savedById = new Map(savedQuizzes.map((quiz) => [quiz.id, quiz]));
-    const sampleIds = new Set(initialQuizzes.map((quiz) => quiz.id));
-    const samples = initialQuizzes
-      .filter((quiz) => !hiddenSampleIds.includes(quiz.id))
-      .map((quiz) => {
-        const saved = savedById.get(quiz.id);
-        return saved
-          ? {
-              ...quiz,
-              ...(saved.questions.length > 0
-                ? {
-                    title: saved.title,
-                    subject: saved.subject,
-                    questions: saved.questions.length,
-                    duration: saved.duration,
-                    attempts: saved.attempts ?? quiz.attempts,
-                  }
-                : {}),
-              status: saved.status,
-            }
-          : quiz;
-      });
-    const managed = savedQuizzes
-      .filter((quiz) => !sampleIds.has(quiz.id))
-      .map((quiz) => ({
+    return getQuizCatalog(savedQuizzes, deletedQuizIds).map((quiz) => ({
         id: quiz.id,
         title: quiz.title,
         subject: quiz.subject,
@@ -112,8 +52,7 @@ export default function QuizManagementPage() {
         attempts: quiz.attempts ?? 0,
         status: quiz.status,
       }));
-    return [...samples, ...managed];
-  }, [savedQuizzes, hiddenSampleIds]);
+  }, [deletedQuizIds, savedQuizzes]);
 
   // Search and filter
   const filteredQuizzes = quizzes.filter((quiz) => {
@@ -150,9 +89,6 @@ export default function QuizManagementPage() {
     if (!confirmed) return;
 
     try {
-      if (initialQuizzes.some((quiz) => quiz.id === id)) {
-        setHiddenSampleIds((current) => [...current, id]);
-      }
       deleteManagedQuiz(id);
     } catch (error) {
       console.error("Failed to delete saved quiz:", error);
@@ -165,21 +101,9 @@ export default function QuizManagementPage() {
       quiz.status === "Published" ? "Draft" : "Published";
 
     try {
-      const current = savedQuizzes.find((item) => item.id === quiz.id);
-      const updatedQuiz: ManagedQuiz = current
-        ? { ...current, status: newStatus }
-        : {
-            id: quiz.id,
-            title: quiz.title,
-            description: "",
-            subject: quiz.subject,
-            difficulty: "Intermediate",
-            duration: quiz.duration,
-            questions: [],
-            questionCount: 0,
-            attempts: quiz.attempts,
-            status: newStatus,
-          };
+      const current = getQuizById(quiz.id, savedQuizzes, deletedQuizIds);
+      if (!current) return;
+      const updatedQuiz: ManagedQuiz = { ...current, status: newStatus };
       saveManagedQuiz(updatedQuiz);
     } catch (error) {
       console.error("Failed to update quiz status:", error);
@@ -339,10 +263,16 @@ export default function QuizManagementPage() {
                         <td className="px-6 py-5">
                           <div className="flex justify-end gap-2">
                             <button
+                              type="button"
                               title="View quiz"
-                              onClick={() =>
-                                router.push(`/quizzes/${quiz.id}`)
-                              }
+                              onClick={() => {
+                                const sourceQuiz = getQuizById(
+                                  quiz.id,
+                                  savedQuizzes,
+                                  deletedQuizIds,
+                                );
+                                if (sourceQuiz) setPreviewQuiz(sourceQuiz);
+                              }}
                               className="rounded-lg p-2 text-[#94A3B8] transition hover:bg-white/[0.06] hover:text-white"
                             >
                               <Eye className="h-4 w-4" />
@@ -407,6 +337,73 @@ export default function QuizManagementPage() {
           </div>
         </section>
       </div>
+      {previewQuiz && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPreviewQuiz(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quiz-preview-title"
+            className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#11162A] p-5 sm:p-7"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-violet-300">
+                  Quiz preview
+                </p>
+                <h2
+                  id="quiz-preview-title"
+                  className="mt-2 text-xl font-semibold text-white"
+                >
+                  {previewQuiz.title}
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  {previewQuiz.questions.length} questions · {previewQuiz.duration} minutes
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewQuiz(null)}
+                className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/[0.05]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-5 space-y-3">
+              {previewQuiz.questions.map((question, index) => (
+                <article
+                  key={question.id}
+                  className="rounded-xl border border-white/[0.07] bg-[#080B18]/60 p-4"
+                >
+                  <h3 className="text-sm font-medium text-white">
+                    {index + 1}. {question.question}
+                  </h3>
+                  <ul className="mt-3 space-y-2 text-xs text-slate-400">
+                    {question.options.map((option, optionIndex) => (
+                      <li
+                        key={`${question.id}-${optionIndex}`}
+                        className={
+                          optionIndex === question.correctAnswer
+                            ? "text-emerald-300"
+                            : undefined
+                        }
+                      >
+                        {String.fromCharCode(65 + optionIndex)}. {option}
+                        {optionIndex === question.correctAnswer ? " · Correct" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

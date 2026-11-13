@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -14,10 +14,15 @@ import {
 } from "lucide-react";
 import StudentRouteGuard from "@/components/layout/StudentRouteGuard";
 import { useStudentAcademicRecord } from "@/lib/academic-storage";
+import { getStaffResources } from "@/lib/academic-staff-service";
+import type { StaffCourseResource } from "@/lib/academic-staff-types";
 import {
   COURSE_MATERIALS,
+  getStaffCourseMaterials,
+  type CourseMaterial,
   type CourseMaterialType,
 } from "@/lib/course-materials";
+import { useStudentEnrollments } from "@/lib/student-enrollments";
 
 const resourceTypes: Array<CourseMaterialType | "All types"> = [
   "All types",
@@ -26,6 +31,8 @@ const resourceTypes: Array<CourseMaterialType | "All types"> = [
   "Reading material",
   "PDF document",
   "Supporting resource",
+  "Lab sheet",
+  "Syllabus & Guide",
 ];
 
 function getSafeExternalUrl(value?: string): string | undefined {
@@ -53,17 +60,61 @@ function formatDate(value: string): string {
 export default function CourseMaterialsPage() {
   const params = useParams<{ courseId: string }>();
   const { record } = useStudentAcademicRecord();
+  const enrollments = useStudentEnrollments(record.studentId);
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] =
     useState<CourseMaterialType | "All types">("All types");
+  const [staffResources, setStaffResources] = useState<StaffCourseResource[]>([]);
+  const [resourcesError, setResourcesError] = useState("");
+  const [previewMaterial, setPreviewMaterial] = useState<CourseMaterial | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let active = true;
+    getStaffResources()
+      .then((resources) => {
+        if (active) setStaffResources(resources);
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to load Academic Staff course materials:", error);
+        if (active) {
+          setResourcesError(
+            "Academic Staff resources could not be loaded. Please try again later.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const courseEntry = record.terms
     .flatMap((term) => term.courses.map((course) => ({ course, term })))
-    .find(({ course }) => course.id === params.courseId);
+    .find(
+      ({ course, term }) =>
+        course.id === params.courseId &&
+        enrollments.some(
+          (enrollment) =>
+            enrollment.courseId === course.id && enrollment.termId === term.id,
+        ),
+    );
+
+  const courseMaterials = useMemo(() => {
+    if (!courseEntry) return [];
+    const staffMaterials = getStaffCourseMaterials(
+      courseEntry.course.id,
+      courseEntry.course.courseCode,
+      staffResources,
+    );
+    return [...COURSE_MATERIALS, ...staffMaterials].filter(
+      (material) => material.courseId === params.courseId,
+    );
+  }, [courseEntry, params.courseId, staffResources]);
 
   const materials = useMemo(
     () =>
-      COURSE_MATERIALS.filter((material) => material.courseId === params.courseId)
+      courseMaterials
         .filter(
           (material) =>
             selectedType === "All types" ||
@@ -79,7 +130,7 @@ export default function CourseMaterialsPage() {
             material.fileName?.toLowerCase().includes(query)
           );
         }),
-    [params.courseId, search, selectedType],
+    [courseMaterials, search, selectedType],
   );
 
   return (
@@ -93,7 +144,7 @@ export default function CourseMaterialsPage() {
             Course not found
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            Materials are available only for courses found in your academic
+            Materials are available only for courses in your enrollment
             records.
           </p>
           <Link
@@ -130,11 +181,20 @@ export default function CourseMaterialsPage() {
                 {courseEntry.course.courseTitle}
               </p>
               <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-400">
-                Sample resources for demonstration only. Files listed here have
-                not been uploaded and are not downloadable.
+                Resources are matched to this course by course code. Demo files
+                are not downloadable unless an external link is provided.
               </p>
             </div>
           </section>
+
+          {resourcesError && (
+            <section
+              role="alert"
+              className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 text-xs leading-5 text-amber-100/80"
+            >
+              {resourcesError}
+            </section>
+          )}
 
           <section className="flex flex-col gap-3 sm:flex-row">
             <label className="relative min-w-0 flex-1">
@@ -210,6 +270,11 @@ export default function CourseMaterialsPage() {
                       </span>
                     </div>
 
+                    {material.source && (
+                      <p className="mt-3 text-[10px] font-medium uppercase tracking-wide text-cyan-300">
+                        Shared by {material.source}
+                      </p>
+                    )}
                     <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.15em] text-violet-300">
                       {material.resourceType}
                     </p>
@@ -250,11 +315,23 @@ export default function CourseMaterialsPage() {
                         <ExternalLink size={15} />
                       </a>
                     ) : (
-                      <p className="mt-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-3 py-2.5 text-xs leading-5 text-amber-100/70">
-                        {hasInvalidUrl
-                          ? "This resource link is invalid and cannot be opened."
-                          : "Sample metadata only. No document is uploaded; preview and download are unavailable."}
-                      </p>
+                      <div className="mt-5">
+                        {material.previewContent ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewMaterial(material)}
+                            className="w-full rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-200 transition hover:bg-cyan-500/15"
+                          >
+                            Preview sample content
+                          </button>
+                        ) : (
+                          <p className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-3 py-2.5 text-xs leading-5 text-amber-100/70">
+                            {hasInvalidUrl
+                              ? "This resource link is invalid and cannot be opened."
+                              : "Sample metadata only. No document is uploaded; preview and download are unavailable."}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </article>
                 );
@@ -264,16 +341,12 @@ export default function CourseMaterialsPage() {
             <div className="rounded-2xl border border-dashed border-white/[0.12] bg-[#11162A]/70 px-5 py-16 text-center">
               <Search size={28} className="mx-auto text-slate-500" />
               <h3 className="mt-4 font-semibold text-white">
-                {COURSE_MATERIALS.some(
-                  (material) => material.courseId === params.courseId,
-                )
+                {courseMaterials.length > 0
                   ? "No materials match your filters"
                   : "No materials available yet"}
               </h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-                {COURSE_MATERIALS.some(
-                  (material) => material.courseId === params.courseId,
-                )
+                {courseMaterials.length > 0
                   ? "Try another search term or resource type."
                   : "Sample materials have not been added for this course."}
               </p>
@@ -290,6 +363,40 @@ export default function CourseMaterialsPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+      {previewMaterial?.previewContent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="course-resource-preview-title"
+            className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#11162A] p-5 sm:p-7"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-cyan-300">
+                  Demo resource preview
+                </p>
+                <h2
+                  id="course-resource-preview-title"
+                  className="mt-2 text-xl font-semibold text-white"
+                >
+                  {previewMaterial.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewMaterial(null)}
+                className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/[0.05]"
+              >
+                Close
+              </button>
+            </div>
+            <pre className="mt-5 whitespace-pre-wrap rounded-xl border border-white/[0.07] bg-[#080B18]/60 p-4 text-sm leading-6 text-slate-300">
+              {previewMaterial.previewContent}
+            </pre>
+          </section>
         </div>
       )}
     </StudentRouteGuard>

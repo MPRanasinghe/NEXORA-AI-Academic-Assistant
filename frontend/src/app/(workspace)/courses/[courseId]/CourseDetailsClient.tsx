@@ -16,13 +16,22 @@ import {
 import StudentRouteGuard from "@/components/layout/StudentRouteGuard";
 import { COURSE_SUPPLEMENTARY_INFO } from "@/lib/course-content";
 import { useStudentAcademicRecord } from "@/lib/academic-storage";
+import { useStudentEnrollments } from "@/lib/student-enrollments";
 
 export default function CourseDetailsPage() {
   const params = useParams<{ courseId: string }>();
   const { record } = useStudentAcademicRecord();
+  const enrollments = useStudentEnrollments(record.studentId);
   const courseEntry = record.terms
     .flatMap((term) => term.courses.map((course) => ({ course, term })))
-    .find(({ course }) => course.id === params.courseId);
+    .find(
+      ({ course, term }) =>
+        course.id === params.courseId &&
+        enrollments.some(
+          (enrollment) =>
+            enrollment.courseId === course.id && enrollment.termId === term.id,
+        ),
+    );
 
   if (!courseEntry) {
     return (

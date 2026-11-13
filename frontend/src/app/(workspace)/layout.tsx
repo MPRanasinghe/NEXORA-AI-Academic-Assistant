@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import WorkspaceSidebar from "@/components/layout/WorkspaceSidebar";
 import WorkspaceHeader from "@/components/layout/WorkspaceHeader";
@@ -14,6 +14,11 @@ export default function WorkspaceLayout({
 }>) {
   const { role, loading } = useDemoAuth();
   const router = useRouter();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const closeMobileSidebar = useCallback(
+    () => setMobileSidebarOpen(false),
+    [],
+  );
 
   useEffect(() => {
     if (!loading && role === null) {
@@ -39,14 +44,20 @@ export default function WorkspaceLayout({
 
   return (
     <div className="flex min-h-screen bg-[#080B18] text-slate-100">
-      {/* Sidebar */}
-      <WorkspaceSidebar role={role} />
+      <WorkspaceSidebar
+        role={role}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={closeMobileSidebar}
+      />
 
       {/* Main Workspace */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <WorkspaceHeader role={role} />
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <WorkspaceHeader
+          role={role}
+          onMenuClick={() => setMobileSidebarOpen(true)}
+        />
 
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

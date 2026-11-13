@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -25,6 +25,7 @@ import {
   LineChart,
   Sliders,
   Users,
+  X,
 } from "lucide-react";
 
 import type { UserRole } from "@/lib/demo-user";
@@ -40,14 +41,26 @@ interface NavItem {
 
 interface WorkspaceSidebarProps {
   role?: UserRole;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export default function WorkspaceSidebar({
   role = "student",
+  mobileOpen = false,
+  onMobileClose,
 }: WorkspaceSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { logout } = useDemoAuth();
+
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const dashboardNavigation: NavItem[] = [
     {
@@ -215,9 +228,9 @@ export default function WorkspaceSidebar({
   };
   const accent = roleAccents[role];
 
-  return (
+  const sidebarContent = (
     <aside
-      className={`relative flex h-screen flex-col border-r border-white/[0.08] bg-[#0D1225] transition-all duration-300 ${
+      className={`relative flex h-full flex-col border-r border-white/[0.08] bg-[#0D1225] transition-all duration-300 ${
         collapsed ? "w-[76px]" : "w-[260px]"
       }`}
     >
@@ -227,7 +240,10 @@ export default function WorkspaceSidebar({
           collapsed ? "justify-center px-3" : "px-6"
         }`}
       >
-        <Link href={role === "administrator" ? "/administration" : "/dashboard"} className="flex items-center gap-3">
+        <Link
+          href={role === "administrator" ? "/administration" : "/dashboard"}
+          className="flex items-center gap-3"
+        >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 shadow-lg shadow-violet-500/20">
               <span className="text-xl font-black text-white">N</span>
@@ -242,11 +258,22 @@ export default function WorkspaceSidebar({
             )}
           </div>
         </Link>
+
+        {/* Mobile close button */}
+        {onMobileClose && !collapsed && (
+          <button
+            onClick={onMobileClose}
+            className="ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white lg:hidden"
+            aria-label="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
-      {/* Collapse Button */}
+      {/* Collapse Button (desktop only) */}
       <div
-        className={`flex py-3 ${
+        className={`hidden py-3 lg:flex ${
           collapsed ? "justify-center" : "justify-end px-4"
         }`}
       >
@@ -268,7 +295,9 @@ export default function WorkspaceSidebar({
       {!collapsed && (
         <div className="mx-3 mb-3 flex items-center gap-2 rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2">
           <span className={`h-2 w-2 rounded-full ${accent.dot}`} />
-          <span className={`text-[11px] font-semibold uppercase tracking-wider ${accent.label}`}>
+          <span
+            className={`text-[11px] font-semibold uppercase tracking-wider ${accent.label}`}
+          >
             {roleMeta.label}
           </span>
         </div>
@@ -303,6 +332,7 @@ export default function WorkspaceSidebar({
 
               <Link
                 href={item.href}
+                onClick={onMobileClose}
                 title={collapsed ? item.label : undefined}
                 className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all ${
                   collapsed ? "justify-center" : ""
@@ -354,19 +384,23 @@ export default function WorkspaceSidebar({
 
       {/* Bottom Navigation */}
       <div className="space-y-1 border-t border-white/[0.08] p-3">
-        <Link
-          href={role === "administrator" ? "/administration/settings" : "/settings"}
-          title={collapsed ? "Settings" : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-400 transition hover:bg-white/[0.05] hover:text-white ${
-            collapsed ? "justify-center" : ""
-          }`}
-        >
-          <Settings size={18} className="shrink-0" />
+        {role !== "academic_staff" && (
+          <Link
+            href={
+              role === "administrator" ? "/administration/settings" : "/settings"
+            }
+            title={collapsed ? "Settings" : undefined}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-400 transition hover:bg-white/[0.05] hover:text-white ${
+              collapsed ? "justify-center" : ""
+            }`}
+          >
+            <Settings size={18} className="shrink-0" />
 
-          {!collapsed && (
-            <span className="text-xs font-medium">Settings</span>
-          )}
-        </Link>
+            {!collapsed && (
+              <span className="text-xs font-medium">Settings</span>
+            )}
+          </Link>
+        )}
 
         <button
           title={collapsed ? "Sign out" : undefined}
@@ -383,5 +417,38 @@ export default function WorkspaceSidebar({
         </button>
       </div>
     </aside>
+  );
+
+  return (
+    <>
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          role="presentation"
+        >
+          <button
+            type="button"
+            className="h-full w-full cursor-default"
+            aria-label="Close workspace navigation"
+            onClick={onMobileClose}
+          />
+        </div>
+      )}
+
+      {/* Mobile drawer */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 h-full transform transition-transform duration-300 lg:hidden ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {sidebarContent}
+      </div>
+
+      {/* Desktop sidebar — always visible */}
+      <div className="hidden h-screen lg:flex">
+        {sidebarContent}
+      </div>
+    </>
   );
 }

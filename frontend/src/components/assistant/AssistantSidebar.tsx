@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import {
   type AssistantProfile,
@@ -20,8 +21,10 @@ import {
 
 export default function AssistantSidebar({
   profile,
+  settingsHref,
 }: {
   profile: AssistantProfile;
+  settingsHref: string;
 }) {
   const {
     conversations,
@@ -90,6 +93,17 @@ export default function AssistantSidebar({
       </div>
 
       <div className="shrink-0 p-3">
+        <Link
+          href="/dashboard"
+          onClick={() => setMobileSidebarOpen(false)}
+          title={collapsed ? "Back to workspace" : undefined}
+          className="mb-3 flex items-center justify-center rounded-xl border border-white/[0.08] px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:border-violet-400/20 hover:bg-white/[0.04] hover:text-white"
+        >
+          <span className={collapsed ? "sr-only" : undefined}>
+            Back to workspace
+          </span>
+          {collapsed && <PanelLeftOpen size={16} aria-hidden="true" />}
+        </Link>
         <button
           type="button"
           onClick={createNewConversation}
@@ -178,7 +192,7 @@ export default function AssistantSidebar({
         {!collapsed && (
           <div className="mb-3 flex items-center gap-2 px-2 text-[10px] text-slate-500">
             <ShieldCheck size={14} className="shrink-0 text-cyan-400" />
-            <span>Demo academic assistant</span>
+            <span>Demo assistant · history saved in this browser</span>
           </div>
         )}
         <div className="relative">
@@ -223,14 +237,19 @@ export default function AssistantSidebar({
                 </p>
               </div>
               <div className="my-1 border-t border-white/[0.07]" />
-              <button
-                type="button"
-                onClick={() => setProfileOpen(false)}
+              <Link
+                href={settingsHref}
+                onClick={() => {
+                  setProfileOpen(false);
+                  setMobileSidebarOpen(false);
+                }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-slate-300 transition hover:bg-white/[0.05]"
               >
                 <Settings size={14} />
-                Profile &amp; settings
-              </button>
+                {settingsHref === "/academic-services"
+                  ? "Academic Services"
+                  : "Profile & settings"}
+              </Link>
               <p className="px-3 pb-1 pt-2 text-[10px] leading-4 text-slate-500">
                 Account settings will be provided by your university sign-in.
               </p>
