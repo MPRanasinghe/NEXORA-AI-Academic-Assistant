@@ -6,6 +6,8 @@ from app.api.routes.health import router as health_router
 from app.database.connection import Base, engine
 from app.models import Document
 
+from app.api.routes.documents import router as documents_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,5 +33,10 @@ async def root():
 
 app.include_router(
     health_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    documents_router,
     prefix="/api/v1"
 )

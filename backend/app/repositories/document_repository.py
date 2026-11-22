@@ -1,3 +1,4 @@
+
 from sqlalchemy.orm import Session
 
 from app.models import Document
@@ -19,11 +20,15 @@ class DocumentRepository:
         return document
 
     @staticmethod
-    def get_by_id(db: Session, document_id: int):
-        return db.query(Document).filter(Document.id == document_id).first()
+    def get_by_id(db: Session, document_id: int) -> Document | None:
+        return (
+            db.query(Document)
+            .filter(Document.id == document_id)
+            .first()
+        )
 
     @staticmethod
-    def get_all(db: Session):
+    def get_all(db: Session) -> list[Document]:
         return db.query(Document).all()
 
     @staticmethod
@@ -32,7 +37,10 @@ class DocumentRepository:
 
     @staticmethod
     def delete(db: Session, document_id: int) -> bool:
-        document = db.query(Document).filter(Document.id == document_id).first()
+        document = DocumentRepository.get_by_id(
+            db=db,
+            document_id=document_id
+        )
 
         if document is None:
             return False
@@ -41,3 +49,18 @@ class DocumentRepository:
         db.commit()
 
         return True
+
+@staticmethod
+def delete(db: Session, document_id: int) -> bool:
+    document = DocumentRepository.get_by_id(
+        db=db,
+        document_id=document_id
+    )
+
+    if document is None:
+        return False
+
+    db.delete(document)
+    db.commit()
+
+    return True
