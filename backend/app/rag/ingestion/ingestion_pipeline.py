@@ -26,8 +26,28 @@ class DocumentIngestionPipeline:
         self.dense_retriever = dense_retriever
         self.vector_store = vector_store
 
-        self.document_chunks = []
-        self.chunk_metadata = []
+        existing_chunks = (
+            vector_store.get_all_chunks()
+            if vector_store is not None
+            else []
+        )
+        self.document_chunks = [
+            item["chunk"] for item in existing_chunks
+        ]
+        self.chunk_metadata = [
+            {
+                key: value
+                for key, value in item.items()
+                if key != "chunk"
+            }
+            for item in existing_chunks
+        ]
+
+        if self.document_chunks:
+            self.tfidf_retriever.index_chunks(
+                chunks=self.document_chunks,
+                metadata=self.chunk_metadata,
+            )
 
     def ingest_document(
         self,
@@ -70,34 +90,56 @@ class DocumentIngestionPipeline:
             for index in range(len(chunks))
         ]
 
-        # Step 4: Combine existing and new documents.
-        all_chunks = self.document_chunks + chunks
-        all_metadata = self.chunk_metadata + metadata
+        # Step 4: Combine existing and new documents without duplicating
+        # deterministic chunks when a document is ingested again.
+        indexed_chunks = {}
+        for chunk, item in zip(
+            self.document_chunks + chunks,
+            self.chunk_metadata + metadata,
+        ):
+            identity = (
+                item.get("document_id"),
+                item.get("filename"),
+                item.get("chunk_index"),
+                chunk,
+            )
+            indexed_chunks[identity] = (chunk, item)
 
-        # Step 5: Index using TF-IDF.
-        self.tfidf_retriever.index_chunks(
-            chunks=all_chunks,
-            metadata=all_metadata
-        )
+        all_chunks = [item[0] for item in indexed_chunks.values()]
+        all_metadata = [item[1] for item in indexed_chunks.values()]
 
-        # Step 6: Generate and index dense embeddings.
-        if self.dense_retriever is not None:
-            self.dense_retriever.index_chunks(
+        # Step 5: Index using TF-IDF and persist dense vectors.
+        try:
+            self.tfidf_retriever.index_chunks(
                 chunks=all_chunks,
                 metadata=all_metadata
             )
 
-        # Step 7: Persist embeddings and metadata in ChromaDB.
-        if self.vector_store is not None:
-            embeddings = (
-                self.dense_retriever.chunk_embeddings.tolist()
-            )
+            if self.dense_retriever is not None:
+                self.dense_retriever.index_chunks(
+                    chunks=chunks if self.vector_store is not None else all_chunks,
+                    metadata=metadata if self.vector_store is not None else all_metadata,
+                )
 
-            self.vector_store.add_chunks(
-                chunks=all_chunks,
-                embeddings=embeddings,
-                metadata=all_metadata
-            )
+            if self.vector_store is not None:
+                embeddings = (
+                    self.dense_retriever.chunk_embeddings.tolist()
+                )
+
+                self.vector_store.add_chunks(
+                    chunks=chunks,
+                    embeddings=embeddings,
+                    metadata=metadata
+                )
+        except Exception:
+            if self.document_chunks:
+                self.tfidf_retriever.index_chunks(
+                    chunks=self.document_chunks,
+                    metadata=self.chunk_metadata,
+                )
+            else:
+                self.tfidf_retriever.clear_index()
+            raise
 
         # Step 8: Update stored collections.
         self.document_chunks = all_chunks

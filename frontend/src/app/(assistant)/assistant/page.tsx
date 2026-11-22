@@ -412,7 +412,7 @@ export default function AssistantPage() {
             <div className="mt-1 flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               <span className="text-[10px] font-medium text-amber-200/80">
-                Demo mode · responses and retrieval data are illustrative
+                Answers use indexed academic documents only
               </span>
             </div>
           </div>
@@ -480,7 +480,7 @@ export default function AssistantPage() {
                     <div className="rounded-2xl border border-white/[0.07] bg-[#11162A] px-4 py-3 text-xs text-slate-400">
                       <span className="inline-flex items-center gap-2">
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
-                        NEXORA is preparing a demo response…
+                        NEXORA is searching academic documents…
                       </span>
                     </div>
                   </div>
@@ -672,8 +672,9 @@ export default function AssistantPage() {
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[9px] text-slate-600">
               <ShieldCheck size={12} className="text-cyan-400/70" />
               <span>
-                Demo mode: file contents are not uploaded or analyzed; only
-                attachment details are saved with local conversation history.
+                Answers use indexed academic documents. Attachment details are
+                saved in this conversation; file contents are not uploaded or
+                analyzed.
               </span>
               <span className="hidden sm:inline">·</span>
               <span>Enter to send · Shift+Enter for a new line</span>
@@ -763,7 +764,7 @@ function MessageView({
             className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[10px] font-medium text-cyan-200/75 transition hover:bg-white/[0.04]"
           >
             <BookOpen size={13} />
-            {message.sources.length} demo academic sources
+            {message.sources.length} academic document sources
             {sourcesCollapsed ? (
               <ChevronRight size={13} />
             ) : (
@@ -785,7 +786,7 @@ function MessageView({
                     {source.category}
                   </span>
                   <span className="shrink-0 text-[9px] text-cyan-200/80">
-                    {source.relevance}% demo
+                    {source.relevance}% relevance
                   </span>
                 </div>
               ))}

@@ -71,6 +71,15 @@ def require_roles(*roles: str):
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: UserRegistration, db: Session = Depends(get_db)):
+    if payload.role != "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Public registration is limited to students. "
+                "Academic staff accounts require authorization."
+            ),
+        )
+
     if UserRepository.get_by_email(db, str(payload.email)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

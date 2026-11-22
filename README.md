@@ -59,6 +59,28 @@ Setup instructions for the frontend and backend will be added as the implementat
 
 See `backend/requirements.txt` for backend dependencies.
 
+## Academic Assistant API
+
+The authenticated student chat endpoint is `POST /api/v1/chat/ask`:
+
+```json
+{
+  "question": "What is machine learning?"
+}
+```
+
+The backend uses `GEMINI_API_KEY`, `GEMINI_MODEL`, and `EMBEDDING_MODEL` from its environment configuration. ChromaDB data is stored in the configured `CHROMA_PERSIST_DIRECTORY` (default: `./storage/chroma`).
+
+Academic staff and administrators can upload PDFs through `POST /api/v1/documents/upload`. Uploaded PDFs are extracted and indexed for the assistant. Attachments selected in the student chat are kept as conversation details only; their contents are not uploaded or analyzed by the chat endpoint.
+
+Public signup is limited to student accounts. Academic staff accounts are provisioned locally by an authorized developer or operator; no public staff-creation endpoint is available. To create a staff account against the already-configured backend database, run from the `backend/` directory:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.create_academic_staff
+```
+
+The script prompts for the account name and email and reads the password securely. It validates the existing registration password rules and refuses duplicate email addresses. It does not create database tables or modify existing accounts.
+
 ## Project Team
 
 Two-member development team.

@@ -26,12 +26,20 @@ class ChromaVectorStore:
         self.client = chromadb.PersistentClient(
             path=persist_directory
         )
+        self._closed = False
 
         # Create or retrieve the academic document collection.
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"}
         )
+
+    def close(self) -> None:
+        """Close the ChromaDB client."""
+
+        if not self._closed:
+            self.client.close()
+            self._closed = True
 
     @staticmethod
     def _generate_id(
@@ -154,3 +162,26 @@ class ChromaVectorStore:
         """Return the number of stored document chunks."""
 
         return self.collection.count()
+
+    def get_all_chunks(self) -> List[Dict[str, Any]]:
+        """Return persisted chunk text and metadata for index restoration."""
+
+        count = self.collection.count()
+        if count == 0:
+            return []
+
+        records = self.collection.get(
+            limit=count,
+            include=["documents", "metadatas"],
+        )
+        chunks = []
+        for document, metadata in zip(
+            records["documents"],
+            records["metadatas"],
+        ):
+            if document is not None:
+                chunks.append({
+                    "chunk": document,
+                    **(metadata or {}),
+                })
+        return chunks

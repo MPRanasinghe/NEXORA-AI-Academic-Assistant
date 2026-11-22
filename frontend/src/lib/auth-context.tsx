@@ -29,7 +29,12 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   restoreError: string | null;
   login: (email: string, password: string) => Promise<AuthUser>;
-  register: (fullName: string, email: string, password: string) => Promise<AuthUser>;
+  register: (
+    fullName: string,
+    email: string,
+    password: string,
+    role?: "student" | "academic_staff",
+  ) => Promise<AuthUser>;
   logout: () => void;
 }
 
@@ -127,8 +132,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fullName: string,
     email: string,
     password: string,
+    role: "student" | "academic_staff" = "student",
   ) => {
-    await registerUser({ full_name: fullName, email, password });
+    await registerUser({ full_name: fullName, email, password, role });
     return login(email, password);
   }, [login]);
 

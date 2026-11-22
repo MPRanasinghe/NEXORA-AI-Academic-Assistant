@@ -17,6 +17,11 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { AuthApiError } from "@/lib/auth-api";
 
+const signupRoles = [
+  { value: "student", label: "Student" },
+  { value: "academic_staff", label: "Academic Staff" },
+] as const;
+
 export default function SignupPage() {
   const router = useRouter();
   const { register } = useAuth();
@@ -24,6 +29,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [role, setRole] = useState<"student" | "academic_staff">("student");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -44,6 +50,12 @@ export default function SignupPage() {
       setError("Password must be at least 8 characters.");
       return;
     }
+    if (role === "academic_staff") {
+      setError(
+        "Academic staff registration requires authorization. Please contact your NEXORA administrator.",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -51,6 +63,7 @@ export default function SignupPage() {
         formData.fullName.trim(),
         formData.email.trim(),
         formData.password,
+        role,
       );
       router.push("/dashboard");
     } catch (caughtError) {
@@ -112,6 +125,40 @@ export default function SignupPage() {
 
           {/* Signup form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Account role */}
+            <fieldset>
+              <legend className="mb-2 block text-sm font-medium text-slate-300">
+                I am registering as
+              </legend>
+              <div className="grid grid-cols-2 gap-3">
+                {signupRoles.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition ${
+                      role === option.value
+                        ? "border-violet-400/40 bg-violet-500/10 text-violet-100"
+                        : "border-white/[0.08] bg-[#080B18]/50 text-slate-400 hover:border-white/[0.16]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value={option.value}
+                      checked={role === option.value}
+                      onChange={() => setRole(option.value)}
+                      className="h-4 w-4 accent-violet-500"
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+              {role === "academic_staff" && (
+                <p className="mt-2 text-xs leading-5 text-amber-200/80">
+                  Staff accounts require authorization and cannot be created
+                  through public signup. Contact your NEXORA administrator.
+                </p>
+              )}
+            </fieldset>
 
             {/* Full name */}
             <div>

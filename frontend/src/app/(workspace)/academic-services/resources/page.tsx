@@ -1,28 +1,90 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, FolderGit2 } from "lucide-react";
 import ResourceLibrary from "@/components/academic-staff/ResourceLibrary";
+import {
+  AcademicDocumentListItem,
+  getAcademicDocuments,
+} from "@/lib/auth-api";
 import { StaffCourseResource } from "@/lib/academic-staff-types";
 import { getStaffResources } from "@/lib/academic-staff-service";
+
+function mapBackendDocument(
+  document: AcademicDocumentListItem,
+): StaffCourseResource {
+  const uploadedAt = new Date(document.uploaded_at);
+  const status =
+    document.status === "processed"
+      ? "indexed"
+      : document.status === "ingestion_failed"
+        ? "failed"
+        : document.status;
+
+  return {
+    id: `backend-${document.id}`,
+    courseId: "unassigned",
+    courseCode: "UNASSIGNED",
+    courseTitle: "University-wide document",
+    title: document.filename.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
+    type: "PDF document",
+    description: `Backend PDF ingestion status: ${status}.`,
+    fileName: document.filename,
+    fileSize: "Stored on backend",
+    dateAdded: Number.isNaN(uploadedAt.getTime())
+      ? document.uploaded_at
+      : uploadedAt.toLocaleDateString(),
+    previewContent:
+      "This PDF has been uploaded to the academic document backend. File preview is not available in this resource library.",
+  };
+}
 
 export default function TeachingResourcesPage() {
   const [resources, setResources] = useState<StaffCourseResource[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const refreshResources = useCallback(async () => {
+    const [staffResources, backendDocuments] = await Promise.all([
+      getStaffResources(),
+      getAcademicDocuments(),
+    ]);
+    setResources([
+      ...staffResources,
+      ...backendDocuments.map(mapBackendDocument),
+    ]);
+  }, []);
+
   useEffect(() => {
+    let active = true;
     async function load() {
       try {
         const data = await getStaffResources();
-        setResources(data);
+        if (active) setResources(data);
       } catch (err) {
         console.error("Failed to load teaching resources:", err);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
+      }
+
+      try {
+        const backendDocuments = await getAcademicDocuments();
+        if (active) {
+          setResources((current) => [
+            ...current.filter(
+              (resource) => !resource.id.startsWith("backend-"),
+            ),
+            ...backendDocuments.map(mapBackendDocument),
+          ]);
+        }
+      } catch (err) {
+        console.error("Failed to load backend academic documents:", err);
       }
     }
-    load();
+    void load();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -71,7 +133,10 @@ export default function TeachingResourcesPage() {
           <p className="text-xs text-slate-400">Loading teaching resources...</p>
         </div>
       ) : (
-        <ResourceLibrary resources={resources} />
+        <ResourceLibrary
+          resources={resources}
+          onRefreshResources={refreshResources}
+        />
       )}
     </div>
   );

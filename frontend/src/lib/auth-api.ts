@@ -15,6 +15,40 @@ export interface AuthTokenResponse {
   user: AuthUser;
 }
 
+export interface AcademicChatResponse {
+  answer: string;
+  sources: {
+    title: string;
+    category: string;
+    relevance: number;
+  }[];
+  context_used: boolean;
+}
+
+export interface UploadedAcademicDocument {
+  message: string;
+  document_id: number;
+  filename: string;
+  stored_filename: string;
+  status: string;
+  extraction: {
+    page_count: number;
+    character_count: number;
+  };
+  ingestion: {
+    chunk_count: number;
+    total_indexed_chunks: number;
+    status: string;
+  };
+}
+
+export interface AcademicDocumentListItem {
+  id: number;
+  filename: string;
+  uploaded_at: string;
+  status: string;
+}
+
 export class AuthApiError extends Error {
   status: number;
 
@@ -27,6 +61,7 @@ export class AuthApiError extends Error {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
   "http://localhost:8000";
+const TOKEN_KEY = "nexora_auth_token";
 
 async function request<T>(
   path: string,
@@ -34,12 +69,16 @@ async function request<T>(
 ): Promise<T> {
   let response: Response;
   try {
+    const isFormData =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
     response = await fetch(`${API_BASE_URL}/api/v1${path}`, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers: isFormData
+        ? options.headers
+        : {
+            "Content-Type": "application/json",
+            ...options.headers,
+          },
     });
   } catch {
     throw new AuthApiError(
@@ -79,10 +118,11 @@ export function registerUser(input: {
   full_name: string;
   email: string;
   password: string;
+  role?: "student" | "academic_staff";
 }) {
   return request<AuthUser>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ ...input, role: "student" }),
+    body: JSON.stringify({ ...input, role: input.role ?? "student" }),
   });
 }
 
@@ -95,6 +135,52 @@ export function loginUser(email: string, password: string) {
 
 export function getCurrentUser(token: string) {
   return request<AuthUser>("/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function askAcademicAssistant(question: string) {
+  const token = window.localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new AuthApiError("Please sign in to use the academic assistant.", 401);
+  }
+
+  return request<AcademicChatResponse>("/chat/ask", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ question }),
+  });
+}
+
+export function uploadAcademicDocument(file: File) {
+  const token = window.localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new AuthApiError(
+      "Please sign in with an authorized staff account to upload documents.",
+      401,
+    );
+  }
+
+  const body = new FormData();
+  body.append("file", file);
+
+  return request<UploadedAcademicDocument>("/documents/upload", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+}
+
+export function getAcademicDocuments() {
+  const token = window.localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new AuthApiError(
+      "Please sign in with an authorized staff account to view documents.",
+      401,
+    );
+  }
+
+  return request<AcademicDocumentListItem[]>("/documents/", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

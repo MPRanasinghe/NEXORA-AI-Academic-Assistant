@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.chat import router as chat_router
 from app.api.routes.health import router as health_router
 from app.database.connection import Base, engine
 from app.models import AcademicResource, Course, CourseEnrollment, Document, User, Quiz, QuizQuestion, QuizAttempt, QuizAttemptAnswer
@@ -10,13 +12,45 @@ from app.api.routes.documents import router as documents_router
 from app.api.routes.quizzes import router as quizzes_router
 from app.api.routes.auth import router as auth_router
 from app.core.config import settings
+from app.rag.services import build_rag_services
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create database tables when the application starts
     Base.metadata.create_all(bind=engine)
-    yield
+    app.state.rag_services = None
+
+    missing_rag_settings = [
+        setting
+        for setting, value in (
+            ("GEMINI_API_KEY", settings.gemini_api_key),
+            ("GEMINI_MODEL", settings.gemini_model),
+            ("EMBEDDING_MODEL", settings.embedding_model),
+        )
+        if not value.strip()
+    ]
+    if missing_rag_settings:
+        logger.warning(
+            "Academic assistant is unavailable; missing configuration: %s",
+            ", ".join(missing_rag_settings),
+        )
+    else:
+        try:
+            app.state.rag_services = build_rag_services(settings)
+        except Exception:
+            logger.exception("Failed to initialize academic assistant services.")
+
+    try:
+        yield
+    finally:
+        rag_services = app.state.rag_services
+        app.state.rag_services = None
+        if rag_services is not None:
+            rag_services.close()
 
 
 app = FastAPI(
@@ -63,5 +97,10 @@ app.include_router(
 
 app.include_router(
     auth_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    chat_router,
     prefix="/api/v1"
 )

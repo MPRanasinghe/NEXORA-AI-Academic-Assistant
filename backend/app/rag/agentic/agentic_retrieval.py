@@ -1,9 +1,13 @@
 
+import logging
 from typing import Dict, Any
 
 from app.rag.agentic.query_analyzer import analyze_query
 from app.rag.agentic.retrieval_router import RetrievalRouter
 from app.rag.agentic.retrieval_evaluator import evaluate_retrieval
+
+
+logger = logging.getLogger(__name__)
 
 
 class AgenticRetrievalEngine:
@@ -105,6 +109,10 @@ class AgenticRetrievalEngine:
                     break
 
             except Exception as error:
+                logger.exception(
+                    "Retrieval failed using the %s strategy.",
+                    strategy,
+                )
                 attempt_history.append({
                     "attempt": attempt_number,
                     "strategy": strategy,

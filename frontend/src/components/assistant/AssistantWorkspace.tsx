@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -18,6 +17,7 @@ import {
   type AssistantSource,
   type MessageAttachment,
 } from "@/components/assistant/assistant-workspace-context";
+import { askAcademicAssistant } from "@/lib/auth-api";
 
 const ASSISTANT_STORAGE_PREFIX = "nexora-assistant-conversations";
 const ASSISTANT_STORAGE_EVENT = "nexora-assistant-conversations-changed";
@@ -38,19 +38,6 @@ const initialWorkspaceData: AssistantWorkspaceData = {
   conversations: [initialConversation],
   activeConversationId: initialConversation.id,
 };
-
-const demoSources: AssistantSource[] = [
-  {
-    title: "Introduction to Artificial Intelligence",
-    category: "Lecture Notes",
-    relevance: 94,
-  },
-  {
-    title: "Fundamentals of Machine Learning",
-    category: "Academic Resource",
-    relevance: 88,
-  },
-];
 
 function createId() {
   return crypto.randomUUID();
@@ -75,6 +62,11 @@ function parseAssistantMessage(value: unknown): AssistantMessage | null {
     role: value.role,
     content: value.content,
   };
+  const isLegacyDemoResponse =
+    message.role === "assistant" &&
+    message.content.includes(
+      "This is a demonstration response from the NEXORA AI Academic Assistant.",
+    );
   if ("createdAt" in value) {
     if (!Number.isFinite(value.createdAt)) return null;
     message.createdAt = Number(value.createdAt);
@@ -103,7 +95,7 @@ function parseAssistantMessage(value: unknown): AssistantMessage | null {
     }
     message.attachments = attachments;
   }
-  if ("sources" in value) {
+  if ("sources" in value && !isLegacyDemoResponse) {
     if (!Array.isArray(value.sources)) return null;
     const sources: AssistantSource[] = [];
     for (const source of value.sources) {
@@ -123,7 +115,7 @@ function parseAssistantMessage(value: unknown): AssistantMessage | null {
     }
     message.sources = sources;
   }
-  if ("confidence" in value) {
+  if ("confidence" in value && !isLegacyDemoResponse) {
     if (!Number.isFinite(value.confidence)) return null;
     message.confidence = Number(value.confidence);
   }
@@ -222,20 +214,6 @@ function useAssistantWorkspaceData(storageKey: string) {
   }, [snapshot]);
 }
 
-function createDemoResponse(question: string, hasAttachments: boolean) {
-  const topic = question || "the material you shared";
-
-  return {
-    content: `Here is an academic explanation of "${topic}".\n\nThis is a demonstration response from the NEXORA AI Academic Assistant. ${
-      hasAttachments
-        ? "Your selected attachments are shown in this conversation, but demo mode does not upload or analyze their contents. "
-        : ""
-    }The displayed source cards are illustrative examples, not retrieved or verified university references. Once connected, the FastAPI service can coordinate Gemini responses with retrieved learning resources and evidence-backed citations.`,
-    sources: demoSources,
-    confidence: 92,
-  };
-}
-
 export function AssistantWorkspace({
   children,
   profile,
@@ -255,18 +233,6 @@ export function AssistantWorkspace({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [storageError, setStorageError] = useState("");
   const sendingRef = useRef(false);
-  const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  useEffect(
-    () => () => {
-      if (responseTimerRef.current !== null) {
-        clearTimeout(responseTimerRef.current);
-      }
-    },
-    [],
-  );
 
   const updateWorkspace = useCallback(
     (
@@ -406,35 +372,60 @@ export function AssistantWorkspace({
         return false;
       }
 
-      await new Promise<void>((resolve) => {
-        responseTimerRef.current = setTimeout(resolve, 650);
-      });
+      try {
+        const response = question
+          ? await askAcademicAssistant(question)
+          : {
+              answer:
+                "I answer questions using academic documents indexed by the university. Attachments are saved in this conversation, but they are not uploaded or analyzed. Please ask a question about the indexed materials.",
+              sources: [],
+              context_used: false,
+            };
+        const attachmentNotice = attachments.length
+          ? "\n\nNote: Attachments in this conversation were not uploaded or analyzed. This answer uses indexed academic documents only."
+          : "";
+        const assistantMessage: AssistantMessage = {
+          id: createId(),
+          role: "assistant",
+          content: `${response.answer}${attachmentNotice}`,
+          createdAt: Date.now(),
+          sources: response.sources,
+        };
 
-      const response = createDemoResponse(question, attachments.length > 0);
-      const assistantMessage: AssistantMessage = {
-        id: createId(),
-        role: "assistant",
-        content: response.content,
-        createdAt: Date.now(),
-        sources: response.sources,
-        confidence: response.confidence,
-      };
-
-      updateWorkspace((current) => ({
-        ...current,
-        conversations: current.conversations.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                messages: [...conversation.messages, assistantMessage],
-              }
-            : conversation,
-        ),
-      }));
-      responseTimerRef.current = null;
-      sendingRef.current = false;
-      setIsSending(false);
-      return true;
+        return updateWorkspace((current) => ({
+          ...current,
+          conversations: current.conversations.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  messages: [...conversation.messages, assistantMessage],
+                }
+              : conversation,
+          ),
+        }));
+      } catch {
+        const assistantMessage: AssistantMessage = {
+          id: createId(),
+          role: "assistant",
+          content:
+            "Sorry, I couldn't get a response from the academic assistant. Your question is saved; please try again later.",
+          createdAt: Date.now(),
+        };
+        return updateWorkspace((current) => ({
+          ...current,
+          conversations: current.conversations.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  messages: [...conversation.messages, assistantMessage],
+                }
+              : conversation,
+          ),
+        }));
+      } finally {
+        sendingRef.current = false;
+        setIsSending(false);
+      }
     },
     [activeConversationId, conversations, updateWorkspace],
   );

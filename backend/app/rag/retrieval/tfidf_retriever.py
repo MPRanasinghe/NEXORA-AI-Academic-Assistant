@@ -62,6 +62,16 @@ class TFIDFRetriever:
             dict(item) for item in metadata
         ]
 
+    def clear_index(self) -> None:
+        """Clear the in-memory index."""
+
+        self.vectorizer = TfidfVectorizer(
+            stop_words="english"
+        )
+        self.chunk_vectors = None
+        self.chunks = []
+        self.chunk_metadata = []
+
     def retrieve(
         self,
         query: str,

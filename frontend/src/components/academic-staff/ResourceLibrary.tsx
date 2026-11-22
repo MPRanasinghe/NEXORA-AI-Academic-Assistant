@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   Search,
   FolderGit2,
@@ -9,19 +9,36 @@ import {
   Eye,
   X,
   Info,
+  Upload,
+  RefreshCw,
 } from "lucide-react";
 import { StaffCourseResource } from "@/lib/academic-staff-types";
+import {
+  AuthApiError,
+  uploadAcademicDocument,
+} from "@/lib/auth-api";
 
 interface ResourceLibraryProps {
   resources: StaffCourseResource[];
+  onRefreshResources: () => Promise<void>;
 }
 
-export default function ResourceLibrary({ resources }: ResourceLibraryProps) {
+export default function ResourceLibrary({
+  resources,
+  onRefreshResources,
+}: ResourceLibraryProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<string>("All");
   const [selectedType, setSelectedType] = useState<string>("All");
   const [previewResource, setPreviewResource] =
     useState<StaffCourseResource | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadingRef = useRef(false);
 
   // Extract unique course codes
   const courseOptions = useMemo(() => {
@@ -62,6 +79,57 @@ export default function ResourceLibrary({ resources }: ResourceLibraryProps) {
     setSelectedType("All");
   };
 
+  const handleUpload = async (file: File | undefined) => {
+    if (!file || uploadingRef.current) return;
+    if (
+      !file.name.toLowerCase().endsWith(".pdf") ||
+      (file.type && file.type !== "application/pdf")
+    ) {
+      setUploadNotice({
+        type: "error",
+        message: "Only PDF files are allowed.",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    uploadingRef.current = true;
+    setIsUploading(true);
+    setUploadNotice(null);
+
+    try {
+      const result = await uploadAcademicDocument(file);
+      setUploadNotice({
+        type: "success",
+        message: `${result.message} Ingestion status: ${result.ingestion.status}; ${result.ingestion.chunk_count} chunks indexed across ${result.extraction.page_count} pages.`,
+      });
+      try {
+        await onRefreshResources();
+      } catch (error) {
+        setUploadNotice({
+          type: "success",
+          message: `Upload succeeded. The resource list could not be refreshed: ${
+            error instanceof AuthApiError
+              ? error.message
+              : "Please refresh the page."
+          }`,
+        });
+      }
+    } catch (error) {
+      setUploadNotice({
+        type: "error",
+        message:
+          error instanceof AuthApiError
+            ? error.message
+            : "The PDF could not be uploaded. Please try again.",
+      });
+    } finally {
+      uploadingRef.current = false;
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Read-only repository notice */}
@@ -70,8 +138,8 @@ export default function ResourceLibrary({ resources }: ResourceLibraryProps) {
         <p className="leading-relaxed">
           <strong>Curated Teaching Resources:</strong> This library provides a centralized,
           read-only view of course instructional assets, lecture slides, and laboratory exercise
-          sheets across your assigned modules. In this phase, file uploads are restricted to
-          approved curriculum management pipelines.
+          sheets across your assigned modules. Academic PDFs uploaded here are indexed by the
+          backend in the university-wide academic document collection.
         </p>
       </div>
 
@@ -142,8 +210,47 @@ export default function ResourceLibrary({ resources }: ResourceLibraryProps) {
               Reset
             </button>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,application/pdf"
+            className="hidden"
+            disabled={isUploading}
+            onChange={(event) => {
+              void handleUpload(event.currentTarget.files?.[0]);
+            }}
+          />
+          <button
+            type="button"
+            disabled={isUploading}
+            onClick={() => {
+              setUploadNotice(null);
+              fileInputRef.current?.click();
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-3.5 py-2 text-xs font-semibold text-white shadow-lg shadow-cyan-500/10 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isUploading ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Upload size={14} />
+            )}
+            {isUploading ? "Uploading PDF…" : "Upload PDF"}
+          </button>
         </div>
       </div>
+
+      {uploadNotice && (
+        <div
+          role={uploadNotice.type === "error" ? "alert" : "status"}
+          className={`rounded-xl border px-4 py-3 text-xs ${
+            uploadNotice.type === "success"
+              ? "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-100/80"
+              : "border-red-500/20 bg-red-500/[0.05] text-red-100/80"
+          }`}
+        >
+          {uploadNotice.message}
+        </div>
+      )}
 
       {/* Results Header */}
       <div className="flex items-center justify-between text-xs text-slate-400">

@@ -33,50 +33,54 @@ def test_ingestion_with_chroma():
             collection_name="nexora_test"
         )
 
-        pipeline = DocumentIngestionPipeline(
-            tfidf_retriever=tfidf_retriever,
-            dense_retriever=dense_retriever,
-            vector_store=vector_store
-        )
+        try:
+            pipeline = DocumentIngestionPipeline(
+                tfidf_retriever=tfidf_retriever,
+                dense_retriever=dense_retriever,
+                vector_store=vector_store
+            )
 
-        document_text = """
-        Database systems organize and manage structured information.
-        SQL is used to query and manage relational databases.
-        Machine learning allows computers to learn patterns from data.
-        """
+            document_text = """
+            Database systems organize and manage structured information.
+            SQL is used to query and manage relational databases.
+            Machine learning allows computers to learn patterns from data.
+            """
 
-        result = pipeline.ingest_document(
-            text=document_text,
-            filename="Database_Test.pdf",
-            document_id=101,
-            chunk_size=20,
-            overlap=3
-        )
+            result = pipeline.ingest_document(
+                text=document_text,
+                filename="Database_Test.pdf",
+                document_id=101,
+                chunk_size=20,
+                overlap=3
+            )
 
-        print("\nINGESTION RESULT:")
-        print(result)
+            print("\nINGESTION RESULT:")
+            print(result)
 
-        print("\nCHROMA DATABASE COUNT:")
-        print(vector_store.count())
+            print("\nCHROMA DATABASE COUNT:")
+            print(vector_store.count())
 
-        assert result["status"] == "success"
-        assert result["chunk_count"] > 0
-        assert vector_store.count() == result["chunk_count"]
+            assert result["status"] == "success"
+            assert result["chunk_count"] > 0
+            assert vector_store.count() == result["chunk_count"]
 
-        stored_results = vector_store.search(
-            query_embedding=[1.0, 0.0, 0.0],
-            top_k=3
-        )
+            stored_results = vector_store.search(
+                query_embedding=[1.0, 0.0, 0.0],
+                top_k=3
+            )
 
-        print("\nCHROMA SEARCH RESULTS:")
-        for item in stored_results:
-            print(item)
+            print("\nCHROMA SEARCH RESULTS:")
+            for item in stored_results:
+                print(item)
 
-        assert len(stored_results) > 0
-        assert stored_results[0]["filename"] == "Database_Test.pdf"
-        assert stored_results[0]["document_id"] == 101
+            assert len(stored_results) > 0
+            assert stored_results[0]["filename"] == "Database_Test.pdf"
+            assert stored_results[0]["document_id"] == 101
 
-        print("\nINGESTION + CHROMA INTEGRATION: PASSED")
+            print("\nINGESTION + CHROMA INTEGRATION: PASSED")
+        finally:
+            vector_store.close()
+            vector_store.close()
 
 
 if __name__ == "__main__":

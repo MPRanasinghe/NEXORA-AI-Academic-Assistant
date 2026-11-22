@@ -55,13 +55,35 @@ def test_password_hashing():
 
 
 def test_registration_duplicate_login_me_and_role_restriction():
+    staff_self_registration = client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "Unauthorized Staff",
+            "email": "staff@example.com",
+            "password": "SecurePass123",
+            "role": "academic_staff",
+        },
+    )
+    assert staff_self_registration.status_code == 403
+
+    administrator_self_registration = client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "Unauthorized Admin",
+            "email": "admin@example.com",
+            "password": "SecurePass123",
+            "role": "administrator",
+        },
+    )
+    assert administrator_self_registration.status_code == 403
+
     registration = client.post(
         "/api/v1/auth/register",
         json={
             "full_name": "Test Student",
             "email": "Student@Example.com",
             "password": "SecurePass123",
-            "role": "administrator",
+            "role": "student",
         },
     )
     assert registration.status_code == 201
@@ -69,6 +91,27 @@ def test_registration_duplicate_login_me_and_role_restriction():
     assert registered["role"] == "student"
     assert "hashed_password" not in registered
     assert "password" not in registered
+
+    duplicate_role_escalation = client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "Changed Existing Student",
+            "email": "student@example.com",
+            "password": "DifferentPass123",
+            "role": "academic_staff",
+        },
+    )
+    assert duplicate_role_escalation.status_code == 403
+
+    db = TestingSessionLocal()
+    existing_student = db.query(User).filter_by(
+        email="student@example.com"
+    ).one()
+    assert existing_student.full_name == "Test Student"
+    assert existing_student.role == "student"
+    assert db.query(User).filter_by(email="staff@example.com").first() is None
+    assert db.query(User).filter_by(email="admin@example.com").first() is None
+    db.close()
 
     duplicate = client.post(
         "/api/v1/auth/register",
