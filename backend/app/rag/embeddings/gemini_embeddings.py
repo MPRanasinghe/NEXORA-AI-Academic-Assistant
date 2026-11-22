@@ -11,9 +11,7 @@ def generate_embedding(
     model: str,
     task_type: str = "RETRIEVAL_QUERY",
 ) -> List[float]:
-    """
-    Generate a dense embedding for a single text.
-    """
+    """Generate a dense embedding for a single text."""
 
     if not isinstance(text, str):
         raise TypeError("Text must be a string.")
@@ -41,11 +39,9 @@ def generate_embeddings(
     model: str,
     task_type: str = "RETRIEVAL_DOCUMENT",
 ) -> List[List[float]]:
-    """
-    Generate dense embeddings for multiple texts.
-    """
+    """Generate dense embeddings for multiple texts."""
 
-    if not texts:
+    if not isinstance(texts, list) or not texts:
         raise ValueError("Text list cannot be empty.")
 
     if not all(
@@ -56,9 +52,19 @@ def generate_embeddings(
             "All texts must be non-empty strings."
         )
 
+    # Each text must be a separate Content object.
+    # A list of strings is grouped into one content by the SDK.
+    contents = [
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=text)]
+        )
+        for text in texts
+    ]
+
     response = client.models.embed_content(
         model=model,
-        contents=texts,
+        contents=contents,
         config=types.EmbedContentConfig(
             task_type=task_type
         ),
@@ -69,10 +75,16 @@ def generate_embeddings(
 
     if len(response.embeddings) != len(texts):
         raise ValueError(
-            "Embedding count does not match input text count."
+            f"Expected {len(texts)} embeddings, "
+            f"received {len(response.embeddings)}."
         )
 
-    return [
+    embeddings = [
         embedding.values
         for embedding in response.embeddings
     ]
+
+    if any(embedding is None for embedding in embeddings):
+        raise ValueError("One or more embeddings have no values.")
+
+    return embeddings

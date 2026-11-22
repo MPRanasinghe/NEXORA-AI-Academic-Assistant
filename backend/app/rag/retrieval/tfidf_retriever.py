@@ -1,5 +1,5 @@
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -8,7 +8,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 class TFIDFRetriever:
     """
     Retrieve relevant document chunks using TF-IDF
-    vectorization and cosine similarity.
+    vectorization and cosine similarity while preserving
+    document metadata.
     """
 
     def __init__(self):
@@ -17,26 +18,49 @@ class TFIDFRetriever:
         )
         self.chunk_vectors = None
         self.chunks = []
+        self.chunk_metadata = []
 
-    def index_chunks(self, chunks: List[str]) -> None:
+    def index_chunks(
+        self,
+        chunks: List[str],
+        metadata: Optional[List[Dict[str, Any]]] = None
+    ) -> None:
         """
-        Convert document chunks into TF-IDF vectors.
+        Convert document chunks into TF-IDF vectors
+        and preserve their corresponding metadata.
         """
 
         if not chunks:
             raise ValueError("Cannot index an empty chunk collection.")
 
-        if not all(isinstance(chunk, str) for chunk in chunks):
-            raise TypeError("Every chunk must be a string.")
+        if not all(
+            isinstance(chunk, str) and chunk.strip()
+            for chunk in chunks
+        ):
+            raise ValueError("All chunks must be non-empty strings.")
 
-        if not any(chunk.strip() for chunk in chunks):
-            raise ValueError("Chunks cannot all be empty.")
+        if metadata is None:
+            metadata = [{} for _ in chunks]
 
-        self.chunks = chunks
+        if len(metadata) != len(chunks):
+            raise ValueError(
+                "Metadata count must match the number of chunks."
+            )
 
-        self.chunk_vectors = self.vectorizer.fit_transform(
-            chunks
-        )
+        if not all(isinstance(item, dict) for item in metadata):
+            raise TypeError(
+                "Every metadata entry must be a dictionary."
+            )
+
+        # Generate TF-IDF vectors.
+        chunk_vectors = self.vectorizer.fit_transform(chunks)
+
+        # Store chunks, vectors, and metadata.
+        self.chunks = list(chunks)
+        self.chunk_vectors = chunk_vectors
+        self.chunk_metadata = [
+            dict(item) for item in metadata
+        ]
 
     def retrieve(
         self,
@@ -44,7 +68,10 @@ class TFIDFRetriever:
         top_k: int = 3
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve the most relevant chunks for a query.
+        Retrieve the most relevant document chunks.
+
+        Chunks with zero similarity are excluded.
+        Document metadata is included in each result.
         """
 
         if self.chunk_vectors is None:
@@ -56,24 +83,42 @@ class TFIDFRetriever:
         if not query.strip():
             raise ValueError("Query cannot be empty.")
 
-        if top_k <= 0:
-            raise ValueError("top_k must be greater than zero.")
+        if (
+            isinstance(top_k, bool)
+            or not isinstance(top_k, int)
+            or top_k <= 0
+        ):
+            raise ValueError(
+                "top_k must be a positive integer."
+            )
 
+        # Convert the query into a TF-IDF vector.
         query_vector = self.vectorizer.transform([query])
 
+        # Calculate cosine similarity.
         similarities = cosine_similarity(
             query_vector,
             self.chunk_vectors
         ).flatten()
 
-        ranked_indices = similarities.argsort()[::-1][:top_k]
+        # Rank chunks by similarity.
+        ranked_indices = similarities.argsort()[::-1]
 
         results = []
 
         for index in ranked_indices:
+
+            # Ignore chunks with no query similarity.
+            if similarities[index] <= 0:
+                continue
+
             results.append({
                 "chunk": self.chunks[index],
-                "score": float(similarities[index])
+                "score": float(similarities[index]),
+                **self.chunk_metadata[index]
             })
+
+            if len(results) >= top_k:
+                break
 
         return results
