@@ -8,49 +8,22 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  GraduationCap,
   LockKeyhole,
   Mail,
   ShieldCheck,
-  Users,
 } from "lucide-react";
-import { useDemoAuth } from "@/lib/demo-auth-context";
-import { ROLE_META, type UserRole } from "@/lib/demo-user";
-
-const ROLES: { value: UserRole; label: string; description: string; icon: React.ElementType; accent: string; border: string }[] = [
-  {
-    value: "student",
-    label: "Student",
-    description: "Access quizzes, learning resources, and the AI assistant.",
-    icon: GraduationCap,
-    accent: "from-violet-500 to-violet-400",
-    border: "border-violet-400/30",
-  },
-  {
-    value: "academic_staff",
-    label: "Academic Staff",
-    description: "Manage quizzes, courses, and monitor student progress.",
-    icon: Users,
-    accent: "from-cyan-500 to-cyan-400",
-    border: "border-cyan-400/30",
-  },
-  {
-    value: "administrator",
-    label: "Administrator",
-    description: "Full platform access — users, analytics, and settings.",
-    icon: ShieldCheck,
-    accent: "from-blue-500 to-blue-400",
-    border: "border-blue-400/30",
-  },
-];
+import { useAuth } from "@/lib/auth-context";
+import { ROLE_META } from "@/lib/user-role";
+import { AuthApiError } from "@/lib/auth-api";
 
 export default function LoginPage() {
-  const { login, role, loading } = useDemoAuth();
+  const { login, role, loading, restoreError } = useAuth();
   const router = useRouter();
 
-  const [selectedRole, setSelectedRole] = useState<UserRole>("student");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // If a session is already active, bounce to dashboard
@@ -60,17 +33,23 @@ export default function LoginPage() {
     }
   }, [loading, role, router]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
     setIsLoggingIn(true);
 
-    // Demo login — no backend required
-    login(selectedRole);
-
-    // Small delay for visual feedback, then navigate
-    setTimeout(() => {
-      router.push(ROLE_META[selectedRole].defaultPath);
-    }, 400);
+    try {
+      const authenticatedUser = await login(email.trim(), password);
+      router.push(ROLE_META[authenticatedUser.role].defaultPath);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof AuthApiError
+          ? caughtError.message
+          : "Unable to sign in. Please try again.",
+      );
+    } finally {
+      setIsLoggingIn(false);
+    }
   }
 
   if (loading || role !== null) {
@@ -119,7 +98,7 @@ export default function LoginPage() {
           <div className="mb-8">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-200">
               <ShieldCheck size={14} />
-              Secure academic access · Demo mode
+              Secure database-backed academic access
             </div>
 
             <h1 className="text-3xl font-semibold tracking-tight">
@@ -127,67 +106,8 @@ export default function LoginPage() {
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              Select your role, then sign in to continue your academic journey with NEXORA.
+              Sign in with your account to continue your academic journey with NEXORA.
             </p>
-          </div>
-
-          {/* Role selector */}
-          <div className="mb-6">
-            <p className="mb-3 text-sm font-medium text-slate-300">
-              Sign in as
-            </p>
-
-            <div className="grid gap-2.5">
-              {ROLES.map((roleOption) => {
-                const Icon = roleOption.icon;
-                const isSelected = selectedRole === roleOption.value;
-
-                return (
-                  <button
-                    key={roleOption.value}
-                    type="button"
-                    onClick={() => setSelectedRole(roleOption.value)}
-                    className={`flex items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 ${
-                      isSelected
-                        ? `${roleOption.border} bg-white/[0.06] shadow-sm`
-                        : "border-white/[0.06] bg-[#080B18]/40 hover:border-white/[0.12] hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    {/* Role icon */}
-                    <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${roleOption.accent} shadow-sm transition-opacity ${
-                        isSelected ? "opacity-100" : "opacity-50"
-                      }`}
-                    >
-                      <Icon size={17} className="text-white" />
-                    </div>
-
-                    {/* Role info */}
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold leading-5 transition-colors ${isSelected ? "text-white" : "text-slate-400"}`}>
-                        {roleOption.label}
-                      </p>
-                      <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
-                        {roleOption.description}
-                      </p>
-                    </div>
-
-                    {/* Radio indicator */}
-                    <div
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                        isSelected
-                          ? "border-violet-400 bg-violet-400"
-                          : "border-slate-600"
-                      }`}
-                    >
-                      {isSelected && (
-                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* Login form */}
@@ -215,6 +135,8 @@ export default function LoginPage() {
                   placeholder="you@university.edu"
                   autoComplete="email"
                   required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   className="w-full rounded-xl border border-white/[0.08] bg-[#080B18]/70 py-3.5 pl-12 pr-4 text-sm text-white outline-none transition-all placeholder:text-slate-600 focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/10"
                 />
               </div>
@@ -251,6 +173,8 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   className="w-full rounded-xl border border-white/[0.08] bg-[#080B18]/70 py-3.5 pl-12 pr-12 text-sm text-white outline-none transition-all placeholder:text-slate-600 focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/10"
                 />
 
@@ -265,22 +189,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember me */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-400">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(event) => setRememberMe(event.target.checked)}
-                  className="h-4 w-4 accent-violet-500"
-                />
-                Remember me
-              </label>
-
-              <span className="text-xs text-slate-500">
-                Protected access
-              </span>
-            </div>
+            {(error || restoreError) && (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-500/20 bg-red-500/[0.07] px-4 py-3 text-sm text-red-200"
+              >
+                {error || restoreError}
+              </div>
+            )}
 
             {/* Submit */}
             <button
@@ -295,7 +211,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  Sign in as {ROLE_META[selectedRole].label}
+                  Sign in
                   <ArrowRight
                     size={17}
                     className="transition-transform duration-300 group-hover:translate-x-1"
@@ -304,11 +220,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Demo notice */}
-          <div className="mt-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3 text-xs leading-5 text-amber-200/70">
-            <strong className="text-amber-300">Demo mode:</strong> Any email and password will work. Your selected role is saved in localStorage and restored on refresh.
-          </div>
 
           {/* Signup */}
           <div className="mt-7 text-center text-sm text-slate-400">

@@ -117,7 +117,7 @@ export default function NotesPage() {
             </div>
             <h1 className="text-2xl font-semibold sm:text-3xl">My Notes</h1>
             <p className="mt-2 text-sm text-slate-400">
-              Create and search private study notes for your demo student profile.
+              Create and search private study notes for your account.
             </p>
           </div>
           <button

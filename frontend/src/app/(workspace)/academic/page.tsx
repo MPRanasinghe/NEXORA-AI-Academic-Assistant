@@ -18,7 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import { useAuth } from "@/lib/auth-context";
 import {
   useStudentAcademicRecord,
   AcademicTerm,
@@ -210,28 +210,37 @@ function GpaAnalyticsChart({ terms }: GpaChartProps) {
           );
         })()}
 
-        {/* Area fill under SGPA */}
-        <path d={sgpaArea} fill="url(#sgpaAreaGradient)" />
-
-        {/* Cumulative GPA Line (Cyan) */}
-        <path
-          d={cgpaLine}
-          fill="none"
-          stroke="#22D3EE"
-          strokeWidth="2"
-          strokeDasharray="4 3"
-          strokeLinecap="round"
-        />
-
-        {/* Semester GPA Line (Violet) */}
-        <path
-          d={sgpaLine}
-          fill="none"
-          stroke="#8B5CF6"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        {terms.length ? (
+          <>
+            <path d={sgpaArea} fill="url(#sgpaAreaGradient)" />
+            <path
+              d={cgpaLine}
+              fill="none"
+              stroke="#22D3EE"
+              strokeWidth="2"
+              strokeDasharray="4 3"
+              strokeLinecap="round"
+            />
+            <path
+              d={sgpaLine}
+              fill="none"
+              stroke="#8B5CF6"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </>
+        ) : (
+          <text
+            x={width / 2}
+            y={height / 2}
+            textAnchor="middle"
+            fontSize="12"
+            fill="#94A3B8"
+          >
+            No academic records connected
+          </text>
+        )}
 
         {/* Data points & hover triggers */}
         {sgpaPoints.map((p, idx) => {
@@ -327,7 +336,7 @@ function GpaAnalyticsChart({ terms }: GpaChartProps) {
 
 export default function StudentAcademicProgressPage() {
   const router = useRouter();
-  const { role, loading } = useDemoAuth();
+  const { role, loading } = useAuth();
   const { record } = useStudentAcademicRecord();
 
   // Role Safety Guard: Restrict to Student role
@@ -414,7 +423,7 @@ export default function StudentAcademicProgressPage() {
   }, [allCourses]);
 
   // ==========================================================================
-  // Functional CSV Official Transcript Exporter
+  // Export only academic records connected to this account.
   // ==========================================================================
   const handleExportTranscriptCSV = () => {
     const headers = [
@@ -450,9 +459,9 @@ export default function StudentAcademicProgressPage() {
 
     // Summary metadata block at top of CSV
     const csvContent = [
-      `NEXORA OFFICIAL ACADEMIC TRANSCRIPT (DEMO RECORD)`,
+      `NEXORA ACADEMIC RECORD EXPORT`,
       `Student Name,${record.studentName}`,
-      `Student ID,${record.studentId}`,
+      `Account ID,${record.studentId}`,
       `Program,${record.program}`,
       `Faculty,${record.faculty}`,
       `Current Level,${record.currentLevel}`,
@@ -464,7 +473,7 @@ export default function StudentAcademicProgressPage() {
       headers.join(","),
       ...rows.map((r) => r.join(",")),
       ``,
-      `End of Transcript — Grounded in University Academic Regulations`,
+      `End of Academic Record Export`,
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -473,7 +482,7 @@ export default function StudentAcademicProgressPage() {
     link.href = url;
     link.setAttribute(
       "download",
-      `NEXORA_Transcript_${record.studentId.replace(/\//g, "_")}_${Date.now()}.csv`
+      `NEXORA_Academic_Record_${record.studentId}_${Date.now()}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -501,7 +510,9 @@ export default function StudentAcademicProgressPage() {
   );
   const creditProgressPercentage = Math.min(
     100,
-    Math.round((record.totalCreditsEarned / record.totalCreditsRequired) * 100)
+    record.totalCreditsRequired
+      ? Math.round((record.totalCreditsEarned / record.totalCreditsRequired) * 100)
+      : 0
   );
 
   return (
@@ -535,11 +546,11 @@ export default function StudentAcademicProgressPage() {
 
             <div className="mt-4 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-slate-400">
               <span>
-                Student: <strong className="text-white">{record.studentName}</strong>
+                Account: <strong className="text-white">{record.studentName}</strong>
               </span>
               <span>•</span>
               <span className="font-mono">
-                ID: <strong className="text-slate-200">{record.studentId}</strong>
+                Account ID: <strong className="text-slate-200">{record.studentId}</strong>
               </span>
               <span>•</span>
               <span>
@@ -556,7 +567,7 @@ export default function StudentAcademicProgressPage() {
               title="Export complete academic records as a CSV transcript"
             >
               <Download size={14} />
-              <span>Download Official Transcript (.CSV)</span>
+              <span>Download Academic Record (.CSV)</span>
             </button>
 
             <Link
@@ -570,17 +581,12 @@ export default function StudentAcademicProgressPage() {
         </div>
       </section>
 
-      {/* Demo Data Notice */}
-      <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-4 text-xs text-amber-200/80">
-        <Info size={16} className="mt-0.5 shrink-0 text-amber-400" />
+      {/* Academic data availability */}
+      <div className="flex items-start gap-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-4 text-xs text-cyan-100/80">
+        <Info size={16} className="mt-0.5 shrink-0 text-cyan-400" />
         <p className="leading-relaxed">
-          <strong>Demonstration Academic Records:</strong> These semester evaluations
-          and GPA calculations are securely cached in local storage (
-          <code className="rounded bg-black/40 px-1 py-0.5 text-amber-300 font-mono text-[11px]">
-            nexora-student-academic-records
-          </code>
-          ). In production, these records will be fetched directly from the university
-          Student Information System (SIS) / academic database.
+          <strong>Academic records are not connected yet.</strong> Sample academic
+          fixtures are kept separate and are not presented as your account data.
         </p>
       </div>
 
@@ -604,15 +610,15 @@ export default function StudentAcademicProgressPage() {
               <div className="rounded-xl bg-violet-500/10 p-3 text-violet-400">
                 <Award size={20} />
               </div>
-              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                +0.07 vs Y1
+              <span className="rounded-full border border-slate-500/20 bg-slate-500/10 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                {record.terms.length ? "Academic record" : "No records"}
               </span>
             </div>
             <p className="mt-4 text-xs font-medium text-slate-400">
               Cumulative GPA (CGPA)
             </p>
             <p className="mt-1 font-mono text-3xl font-bold tracking-tight text-white">
-              {record.cumulativeGpa.toFixed(2)}
+              {record.terms.length ? record.cumulativeGpa.toFixed(2) : "—"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Calculated across {record.terms.length} completed semesters
@@ -626,14 +632,14 @@ export default function StudentAcademicProgressPage() {
                 <TrendingUp size={20} />
               </div>
               <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
-                Current Term
+                {record.terms.length ? "Current Term" : "Not available"}
               </span>
             </div>
             <p className="mt-4 text-xs font-medium text-slate-400">
               Semester GPA (SGPA)
             </p>
             <p className="mt-1 font-mono text-3xl font-bold tracking-tight text-white">
-              {record.currentSemesterGpa.toFixed(2)}
+              {record.terms.length ? record.currentSemesterGpa.toFixed(2) : "—"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
               {record.terms[record.terms.length - 1]?.label || "Latest Semester"}
@@ -660,7 +666,9 @@ export default function StudentAcademicProgressPage() {
               </span>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {remainingCredits} credits remaining for graduation
+              {record.totalCreditsRequired
+                ? `${remainingCredits} credits remaining for graduation`
+                : "No degree credit requirements are connected."}
             </p>
           </div>
 
@@ -670,8 +678,8 @@ export default function StudentAcademicProgressPage() {
               <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
                 <ShieldCheck size={20} />
               </div>
-              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                Dean&apos;s List
+              <span className="rounded-full border border-slate-500/20 bg-slate-500/10 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                {record.academicStanding.status}
               </span>
             </div>
             <p className="mt-4 text-xs font-medium text-slate-400">
@@ -723,7 +731,9 @@ export default function StudentAcademicProgressPage() {
             <span>
               Highest SGPA:{" "}
               <strong className="text-violet-300 font-mono">
-                {Math.max(...record.terms.map((t) => t.semesterGpa)).toFixed(2)}
+                {record.terms.length
+                  ? Math.max(...record.terms.map((t) => t.semesterGpa)).toFixed(2)
+                  : "—"}
               </strong>
             </span>
             <span className="text-[11px] text-slate-500">
@@ -740,7 +750,7 @@ export default function StudentAcademicProgressPage() {
                 Degree Credit Audit
               </h3>
               <span className="rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-300">
-                Level 3 Standing
+                {record.currentLevel}
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-400">
@@ -812,8 +822,9 @@ export default function StudentAcademicProgressPage() {
               Clearance Forecast:
             </p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-300">
-              With 81 credits completed at CGPA 3.81, you require 39 credits across the
-              remaining 3 semesters to complete the degree.
+              {record.terms.length
+                ? `${remainingCredits} credits remain based on the academic records connected to your account.`
+                : "No academic records are connected to this account yet."}
             </p>
           </div>
         </div>

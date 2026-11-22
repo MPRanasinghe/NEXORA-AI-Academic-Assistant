@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import StudentRouteGuard from "@/components/layout/StudentRouteGuard";
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import { useAuth } from "@/lib/auth-context";
 import { useStudentAcademicRecord } from "@/lib/academic-storage";
 import {
   DEFAULT_STUDENT_PREFERENCES,
@@ -22,7 +22,7 @@ import {
 export default function StudentSettingsPage() {
   const { record } = useStudentAcademicRecord();
   const preferences = useStudentPreferences(record.studentId);
-  const { logout } = useDemoAuth();
+  const { user, role, logout } = useAuth();
   const [saveError, setSaveError] = useState("");
 
   const updatePreference = (
@@ -51,13 +51,13 @@ export default function StudentSettingsPage() {
           </div>
           <h1 className="text-2xl font-semibold sm:text-3xl">Settings</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Demo profile details and local learning preferences.
+            Account information and learning preferences.
           </p>
         </header>
 
-        <p className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3 text-xs leading-5 text-amber-100/70">
-          This is a frontend demo account. Profile identity and preferences are
-          not verified by a university service; do not enter sensitive data.
+        <p className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.04] px-4 py-3 text-xs leading-5 text-cyan-100/70">
+          Account identity is provided by the authenticated NEXORA account.
+          Academic details will appear when connected to the university system.
         </p>
 
         {saveError && (
@@ -77,15 +77,13 @@ export default function StudentSettingsPage() {
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-white">Student profile</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Read-only sample profile from the academic demo data.
+                Verified account details.
               </p>
               <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                <ProfileField label="Name" value={record.studentName} />
-                <ProfileField label="Student ID" value={record.studentId} />
-                <ProfileField label="Program" value={record.program} />
-                <ProfileField label="Faculty" value={record.faculty} />
-                <ProfileField label="Intake year" value={record.intakeYear} />
-                <ProfileField label="Current level" value={record.currentLevel} />
+                <ProfileField label="Name" value={user?.full_name ?? "Unavailable"} />
+                <ProfileField label="Email" value={user?.email ?? "Unavailable"} />
+                <ProfileField label="Account ID" value={String(user?.id ?? "")} />
+                <ProfileField label="Role" value={role ?? "Unavailable"} />
               </dl>
             </div>
           </div>
@@ -99,7 +97,7 @@ export default function StudentSettingsPage() {
             <div>
               <h2 className="font-semibold text-white">Learning preferences</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Saved per student profile in this browser only.
+                Saved per account in this browser only.
               </p>
             </div>
           </div>
@@ -158,7 +156,7 @@ export default function StudentSettingsPage() {
                 Account support
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                Demo password reset information
+                Password reset support
               </span>
             </span>
           </Link>
@@ -173,7 +171,7 @@ export default function StudentSettingsPage() {
                 Sign out
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                End this local demo session
+                End this authenticated session
               </span>
             </span>
           </button>

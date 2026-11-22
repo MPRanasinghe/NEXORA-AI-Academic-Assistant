@@ -49,18 +49,3 @@ class DocumentRepository:
         db.commit()
 
         return True
-
-@staticmethod
-def delete(db: Session, document_id: int) -> bool:
-    document = DocumentRepository.get_by_id(
-        db=db,
-        document_id=document_id
-    )
-
-    if document is None:
-        return False
-
-    db.delete(document)
-    db.commit()
-
-    return True

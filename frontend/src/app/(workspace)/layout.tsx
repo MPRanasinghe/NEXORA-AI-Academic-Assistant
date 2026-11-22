@@ -5,14 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import WorkspaceSidebar from "@/components/layout/WorkspaceSidebar";
 import WorkspaceHeader from "@/components/layout/WorkspaceHeader";
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import { useAuth } from "@/lib/auth-context";
 
 export default function WorkspaceLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { role, loading } = useDemoAuth();
+  const { role, user, loading } = useAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const closeMobileSidebar = useCallback(
@@ -27,7 +27,7 @@ export default function WorkspaceLayout({
   }, [loading, role, router]);
 
   // Show a minimal full-screen loader while restoring the session
-  if (loading || role === null) {
+  if (loading || role === null || user === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#080B18]">
         <div className="flex flex-col items-center gap-4">
@@ -46,6 +46,7 @@ export default function WorkspaceLayout({
     <div className="flex min-h-screen bg-[#080B18] text-slate-100">
       <WorkspaceSidebar
         role={role}
+        userName={user.full_name}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={closeMobileSidebar}
       />
@@ -54,6 +55,7 @@ export default function WorkspaceLayout({
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <WorkspaceHeader
           role={role}
+          userName={user.full_name}
           onMenuClick={() => setMobileSidebarOpen(true)}
         />
 

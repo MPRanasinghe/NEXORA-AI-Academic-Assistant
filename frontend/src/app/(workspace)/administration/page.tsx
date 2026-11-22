@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Eye,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminStatCard from "@/components/admin/AdminStatCard";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/rag-admin-storage";
 
 export default function AdministrationOverviewPage() {
+  const { user } = useAuth();
   const router = useRouter();
   const { documents } = useAdminDocuments();
   const { dataset } = useAdminDataset();
@@ -77,7 +79,7 @@ export default function AdministrationOverviewPage() {
     <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8">
       {/* Header */}
       <AdminPageHeader
-        title="NEXORA Intelligence Administration"
+        title={`Welcome back, ${user?.full_name ?? "Administrator"}`}
         subtitle="Explainable Agentic RAG Control Center for Higher Education & Academic Governance"
         badge="Agentic Perception-Action Loop"
         lastUpdated="Just now"

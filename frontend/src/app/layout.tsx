@@ -1,6 +1,6 @@
 
 import "./globals.css";
-import { DemoAuthProvider } from "@/lib/demo-auth-context";
+import { AuthProvider } from "@/lib/auth-context";
 
 export default function RootLayout({
   children,
@@ -10,7 +10,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <DemoAuthProvider>{children}</DemoAuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

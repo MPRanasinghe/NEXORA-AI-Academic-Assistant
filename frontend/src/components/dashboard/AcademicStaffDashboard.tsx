@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 import {
   BookOpen,
   Users,
@@ -237,6 +238,8 @@ function PerformanceChart() {
 }
 
 export default function AcademicStaffDashboard() {
+  const { user } = useAuth();
+
   return (
     <div className="space-y-8 p-5 sm:p-8">
 
@@ -252,7 +255,7 @@ export default function AcademicStaffDashboard() {
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Welcome back, Academic Staff!
+            Welcome back, {user?.full_name ?? "Academic Staff"}!
           </h1>
 
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">

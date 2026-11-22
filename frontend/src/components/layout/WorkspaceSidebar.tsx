@@ -28,9 +28,9 @@ import {
   X,
 } from "lucide-react";
 
-import type { UserRole } from "@/lib/demo-user";
-import { ROLE_META } from "@/lib/demo-user";
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import type { UserRole } from "@/lib/user-role";
+import { ROLE_META } from "@/lib/user-role";
+import { useAuth } from "@/lib/auth-context";
 
 interface NavItem {
   label: string;
@@ -41,18 +41,20 @@ interface NavItem {
 
 interface WorkspaceSidebarProps {
   role?: UserRole;
+  userName: string;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
 
 export default function WorkspaceSidebar({
   role = "student",
+  userName,
   mobileOpen = false,
   onMobileClose,
 }: WorkspaceSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const { logout } = useDemoAuth();
+  const { logout } = useAuth();
 
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -384,6 +386,11 @@ export default function WorkspaceSidebar({
 
       {/* Bottom Navigation */}
       <div className="space-y-1 border-t border-white/[0.08] p-3">
+        {!collapsed && (
+          <div className="truncate px-3 py-2 text-xs font-medium text-slate-300">
+            {userName}
+          </div>
+        )}
         {role !== "academic_staff" && (
           <Link
             href={

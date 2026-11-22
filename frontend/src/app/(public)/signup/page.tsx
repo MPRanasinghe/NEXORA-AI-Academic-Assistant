@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Eye,
@@ -12,31 +13,55 @@ import {
   LockKeyhole,
   UserRound,
   ShieldCheck,
-  ChevronDown,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { AuthApiError } from "@/lib/auth-api";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    role: "student",
     password: "",
     confirmPassword: "",
   });
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match.");
+      setError("Passwords do not match.");
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
-    // Backend registration will be connected later.
-    alert("Signup interface is ready. Backend registration is coming soon.");
+    setIsSubmitting(true);
+    try {
+      await register(
+        formData.fullName.trim(),
+        formData.email.trim(),
+        formData.password,
+      );
+      router.push("/dashboard");
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof AuthApiError
+          ? caughtError.message
+          : "Unable to create your account. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -148,46 +173,6 @@ export default function SignupPage() {
                   className="w-full rounded-xl border border-white/[0.08] bg-[#080B18]/70 py-3.5 pl-12 pr-4 text-sm text-white outline-none transition-all placeholder:text-slate-600 focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/10"
                 />
               </div>
-            </div>
-
-            {/* Role */}
-            <div>
-              <label
-                htmlFor="role"
-                className="mb-2 block text-sm font-medium text-slate-300"
-              >
-                Account role
-              </label>
-
-              <div className="relative">
-                <GraduationCap
-                  size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={(event) =>
-                    setFormData({ ...formData, role: event.target.value })
-                  }
-                  className="w-full appearance-none rounded-xl border border-white/[0.08] bg-[#080B18]/70 py-3.5 pl-12 pr-12 text-sm text-white outline-none transition-all focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/10"
-                >
-                  <option value="student">Student</option>
-                  <option value="academic_staff">Academic Staff</option>
-                  <option value="administrator">Administrator</option>
-                </select>
-
-                <ChevronDown
-                  size={17}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-              </div>
-
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                Administrator accounts will require authorized approval.
-              </p>
             </div>
 
             {/* Password */}
@@ -314,16 +299,28 @@ export default function SignupPage() {
               </span>
             </label>
 
+            {error && (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-500/20 bg-red-500/[0.07] px-4 py-3 text-sm text-red-200"
+              >
+                {error}
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
+              disabled={isSubmitting}
               className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-all duration-300 hover:from-violet-500 hover:to-violet-400 hover:shadow-violet-500/30 active:scale-[0.98]"
             >
-              Create account
-              <ArrowRight
-                size={17}
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              />
+              {isSubmitting ? "Creating account…" : "Create account"}
+              {!isSubmitting && (
+                <ArrowRight
+                  size={17}
+                  className="transition-transform duration-300 group-hover:translate-x-1"
+                />
+              )}
             </button>
           </form>
 

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import { UserRole } from "@/lib/demo-user";
+import { UserRole } from "@/lib/user-role";
 
 interface DemoAccount {
   id: string;
@@ -60,8 +60,8 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
   {
     id: "usr-student-01",
-    name: "Methmi S. (Undergraduate Researcher)",
-    email: "student@university.edu",
+    name: "Sample Student (Undergraduate Researcher)",
+    email: "student@example.invalid",
     role: "student",
     faculty: "BSc (Hons) Software Engineering",
     status: "Active",
@@ -107,7 +107,7 @@ export default function UserManagementPage() {
       <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/[0.04] p-4 text-xs text-blue-200/80">
         <ShieldCheck size={18} className="mt-0.5 shrink-0 text-blue-400" />
         <p className="leading-relaxed">
-          <strong>Three-Role Role-Based Access Control (RBAC):</strong> The NEXORA platform enforces strict boundary guards: Students are confined to the Learning &amp; Quiz Center, Academic Staff manage assessments and curriculum files, while Administrators oversee the Explainable RAG engine and telemetry. Real credentials and OAuth2 / SAML single sign-on will connect via the future backend.
+          <strong>Illustrative sample accounts only:</strong> This static directory is separate from authenticated database users. Account identity and role access are verified by the backend authentication service.
         </p>
       </div>
 

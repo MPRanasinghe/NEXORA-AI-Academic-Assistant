@@ -60,3 +60,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# User-uploaded documents
+backend/uploads/

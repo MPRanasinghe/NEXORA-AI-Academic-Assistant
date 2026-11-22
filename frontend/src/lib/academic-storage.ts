@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 // ============================================================================
 // NEXORA Academic Progress & Grading System Models
-// (NOTE: In production, these records will be fetched from the University SIS /
-//  FastAPI Backend API. In frontend demo mode, they are persisted in localStorage.)
+// Sample academic records are fixtures only; active account records are scoped
+// to the authenticated database user and remain empty until populated.
 // ============================================================================
 
 export type GradeLetter =
@@ -27,7 +28,8 @@ export type CourseCategory = "Core" | "Elective" | "General" | "Project";
 export type StandingStatus =
   | "Good Standing"
   | "Academic Warning"
-  | "Academic Probation";
+  | "Academic Probation"
+  | "Not available";
 
 export interface AcademicCourseResult {
   id: string;
@@ -119,14 +121,12 @@ export function calculateTermGpa(
 }
 
 // ============================================================================
-// Realistic Seed Data: BSc (Hons) in Software Engineering
-// Student: Methmi S. (Level 3, Semester 1)
-// 5 completed terms, 81 credits earned out of 120 required, CGPA 3.81
+// Explicit sample data, never used as an authenticated user's academic record.
 // ============================================================================
 
-export const DEFAULT_STUDENT_RECORD: StudentAcademicRecord = {
-  studentId: "SE/2023/048",
-  studentName: "Methmi S.",
+export const SAMPLE_STUDENT_RECORD: StudentAcademicRecord = {
+  studentId: "sample-student",
+  studentName: "Sample Student",
   program: "BSc (Hons) in Software Engineering",
   faculty: "Faculty of Computing & Information Technology",
   intakeYear: "2023",
@@ -517,53 +517,146 @@ export const DEFAULT_STUDENT_RECORD: StudentAcademicRecord = {
 
 export const ACADEMIC_STORAGE_KEY = "nexora-student-academic-records";
 
-export function getStudentAcademicRecord(): StudentAcademicRecord {
-  if (typeof window === "undefined") return DEFAULT_STUDENT_RECORD;
+function createEmptyStudentRecord(
+  userId = "",
+  fullName = "",
+): StudentAcademicRecord {
+  return {
+    studentId: userId,
+    studentName: fullName,
+    program: "Not available",
+    faculty: "Not available",
+    intakeYear: "Not available",
+    currentLevel: "Not available",
+    totalCreditsRequired: 0,
+    totalCreditsEarned: 0,
+    cumulativeGpa: 0,
+    currentSemesterGpa: 0,
+    academicStanding: {
+      status: "Not available",
+      honoursTrack: "Not available",
+      description: "No academic record is connected to this account.",
+      gpaThreshold: 0,
+    },
+    terms: [],
+  };
+}
+
+function getUserStorageKey(userId: string) {
+  return `${ACADEMIC_STORAGE_KEY}:${encodeURIComponent(userId)}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isStoredAcademicRecord(value: unknown): value is StudentAcademicRecord {
+  if (!isRecord(value) || !isRecord(value.academicStanding)) return false;
+  return (
+    typeof value.program === "string" &&
+    typeof value.faculty === "string" &&
+    typeof value.intakeYear === "string" &&
+    typeof value.currentLevel === "string" &&
+    Number.isFinite(value.totalCreditsRequired) &&
+    Number.isFinite(value.totalCreditsEarned) &&
+    Number.isFinite(value.cumulativeGpa) &&
+    Number.isFinite(value.currentSemesterGpa) &&
+    Array.isArray(value.terms) &&
+    (value.academicStanding.status === "Good Standing" ||
+      value.academicStanding.status === "Academic Warning" ||
+      value.academicStanding.status === "Academic Probation" ||
+      value.academicStanding.status === "Not available") &&
+    typeof value.academicStanding.honoursTrack === "string" &&
+    typeof value.academicStanding.description === "string" &&
+    Number.isFinite(value.academicStanding.gpaThreshold)
+  );
+}
+
+export function getStudentAcademicRecord(
+  userId: string,
+  fullName: string,
+): StudentAcademicRecord {
+  const emptyRecord = createEmptyStudentRecord(userId, fullName);
+  if (typeof window === "undefined" || !userId) return emptyRecord;
   try {
-    const raw = localStorage.getItem(ACADEMIC_STORAGE_KEY);
-    if (!raw) return DEFAULT_STUDENT_RECORD;
-    return JSON.parse(raw);
+    const raw = localStorage.getItem(getUserStorageKey(userId));
+    if (!raw) return emptyRecord;
+    const saved: unknown = JSON.parse(raw);
+    if (!isStoredAcademicRecord(saved)) {
+      console.error("Saved academic record has an invalid shape.");
+      return emptyRecord;
+    }
+    return {
+      ...saved,
+      studentId: userId,
+      studentName: fullName,
+    };
   } catch (error) {
     console.error("Failed to read academic record from localStorage:", error);
-    return DEFAULT_STUDENT_RECORD;
+    return emptyRecord;
   }
 }
 
 export function saveStudentAcademicRecord(
-  record: StudentAcademicRecord
+  record: StudentAcademicRecord,
+  userId: string,
 ): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !userId) {
+    throw new Error("An authenticated account is required to save academic records.");
+  }
   try {
-    localStorage.setItem(ACADEMIC_STORAGE_KEY, JSON.stringify(record));
+    localStorage.setItem(
+      getUserStorageKey(userId),
+      JSON.stringify({ ...record, studentId: userId }),
+    );
   } catch (error) {
     console.error("Failed to save academic record to localStorage:", error);
+    throw error;
   }
 }
 
-export function resetStudentAcademicRecord(): StudentAcademicRecord {
-  if (typeof window === "undefined") return DEFAULT_STUDENT_RECORD;
+export function resetStudentAcademicRecord(
+  userId: string,
+  fullName: string,
+): StudentAcademicRecord {
+  if (!userId) {
+    throw new Error("An authenticated account is required to reset academic records.");
+  }
   try {
-    localStorage.removeItem(ACADEMIC_STORAGE_KEY);
+    localStorage.removeItem(getUserStorageKey(userId));
   } catch (error) {
     console.error("Failed to reset academic record in localStorage:", error);
+    throw error;
   }
-  return DEFAULT_STUDENT_RECORD;
+  return createEmptyStudentRecord(userId, fullName);
 }
 
-// React Hook with lazy initialization to prevent hydration mismatches
 export function useStudentAcademicRecord() {
-  const [record, setRecord] = useState<StudentAcademicRecord>(
-    getStudentAcademicRecord
-  );
+  const { user } = useAuth();
+  const userId = user ? String(user.id) : "";
+  const fullName = user?.full_name ?? "";
+  const [recordState, setRecordState] = useState(() => ({
+    userId,
+    record: getStudentAcademicRecord(userId, fullName),
+  }));
+  const record =
+    recordState.userId === userId
+      ? recordState.record
+      : getStudentAcademicRecord(userId, fullName);
 
   const updateRecord = (newRecord: StudentAcademicRecord) => {
-    setRecord(newRecord);
-    saveStudentAcademicRecord(newRecord);
+    const ownedRecord = {
+      ...newRecord,
+      studentId: userId,
+      studentName: fullName,
+    };
+    saveStudentAcademicRecord(ownedRecord, userId);
+    setRecordState({ userId, record: ownedRecord });
   };
 
   const resetRecord = () => {
-    const reset = resetStudentAcademicRecord();
-    setRecord(reset);
+    const reset = resetStudentAcademicRecord(userId, fullName);
+    setRecordState({ userId, record: reset });
   };
 
   return { record, updateRecord, resetRecord };

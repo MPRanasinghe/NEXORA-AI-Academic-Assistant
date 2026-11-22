@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
+from app.api.routes.auth import require_roles
 from app.repositories.document_repository import DocumentRepository
 
 from app.services.pdf_service import PDFService
@@ -19,7 +20,8 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("academic_staff", "administrator")),
 ):
     # Validate file extension
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -69,7 +71,8 @@ async def upload_document(
 
 @router.get("/")
 def get_all_documents(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("academic_staff", "administrator")),
 ):
     documents = DocumentRepository.get_all(db=db)
 
@@ -86,7 +89,8 @@ def get_all_documents(
 @router.get("/{document_id}")
 def get_document_by_id(
     document_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("academic_staff", "administrator")),
 ):
     document = DocumentRepository.get_by_id(
         db=db,
@@ -109,7 +113,8 @@ def get_document_by_id(
 @router.delete("/{document_id}")
 def delete_document(
     document_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("administrator")),
 ):
     document = DocumentRepository.get_by_id(
         db=db,

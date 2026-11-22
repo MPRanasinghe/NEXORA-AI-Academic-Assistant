@@ -2,14 +2,14 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import { useAuth } from "@/lib/auth-context";
 
 export default function StudentRouteGuard({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { role, loading } = useDemoAuth();
+  const { role, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

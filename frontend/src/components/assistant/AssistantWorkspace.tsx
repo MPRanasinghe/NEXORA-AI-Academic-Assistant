@@ -19,12 +19,6 @@ import {
   type MessageAttachment,
 } from "@/components/assistant/assistant-workspace-context";
 
-export const DEMO_ASSISTANT_PROFILE: AssistantProfile = {
-  name: "Methmi Ranasinghe",
-  role: "Student Account",
-  initials: "MR",
-};
-
 const ASSISTANT_STORAGE_PREFIX = "nexora-assistant-conversations";
 const ASSISTANT_STORAGE_EVENT = "nexora-assistant-conversations-changed";
 const EMPTY_WORKSPACE_SNAPSHOT = "";

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useDemoAuth } from "@/lib/demo-auth-context";
+import { useAuth } from "@/lib/auth-context";
 import AcademicStaffDashboard from "@/components/dashboard/AcademicStaffDashboard";
 import AdministratorDashboard from "@/components/dashboard/AdministratorDashboard";
 
@@ -72,7 +72,7 @@ function NexoraMark({
 }
 
 export default function DashboardPage() {
-  const { role } = useDemoAuth();
+  const { user, role } = useAuth();
 
   if (role === "academic_staff") {
     return <AcademicStaffDashboard />;
@@ -98,7 +98,7 @@ export default function DashboardPage() {
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Welcome back,
             <span className="block bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">
-              Student!
+              {user?.full_name ?? "Student"}!
             </span>
           </h2>
 

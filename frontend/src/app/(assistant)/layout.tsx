@@ -1,9 +1,8 @@
 "use client";
 
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
-import { useDemoAuth } from "@/lib/demo-auth-context";
-import { ROLE_META } from "@/lib/demo-user";
-import { useStudentAcademicRecord } from "@/lib/academic-storage";
+import { useAuth } from "@/lib/auth-context";
+import { ROLE_META } from "@/lib/user-role";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -12,14 +11,9 @@ export default function AssistantLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { role: authenticatedRole, loading } = useDemoAuth();
+  const { user, role: authenticatedRole, loading } = useAuth();
   const router = useRouter();
-  const { record } = useStudentAcademicRecord();
-  const activeRole = authenticatedRole ?? "student";
-  const profileName =
-    activeRole === "student"
-      ? record.studentName
-      : `${ROLE_META[activeRole].label} Demo Account`;
+  const profileName = user?.full_name ?? "";
   const initials = profileName
     .split(/\s+/)
     .filter(Boolean)
@@ -33,7 +27,7 @@ export default function AssistantLayout({
     }
   }, [authenticatedRole, loading, router]);
 
-  if (loading || authenticatedRole === null) {
+  if (loading || authenticatedRole === null || user === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#080B18]">
         <div className="h-8 w-8 animate-pulse rounded-xl bg-violet-500/60" />
@@ -45,16 +39,16 @@ export default function AssistantLayout({
     <AssistantWorkspace
       profile={{
         name: profileName,
-        role: `${ROLE_META[activeRole].label} Account`,
+        role: `${ROLE_META[authenticatedRole].label} Account`,
         initials: initials || "NX",
       }}
       storageId={
-        activeRole === "student" ? record.studentId : activeRole
+        String(user.id)
       }
       settingsHref={
-        activeRole === "administrator"
+        authenticatedRole === "administrator"
           ? "/administration/settings"
-          : activeRole === "academic_staff"
+          : authenticatedRole === "academic_staff"
             ? "/academic-services"
             : "/settings"
       }

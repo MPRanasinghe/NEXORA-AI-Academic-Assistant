@@ -11,8 +11,8 @@ import {
   X,
   UserRound,
 } from "lucide-react";
-import type { UserRole } from "@/lib/demo-user";
-import { ROLE_META } from "@/lib/demo-user";
+import type { UserRole } from "@/lib/user-role";
+import { ROLE_META } from "@/lib/user-role";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -46,6 +46,7 @@ const pageTitles: Record<string, string> = {
 
 interface WorkspaceHeaderProps {
   role?: UserRole;
+  userName: string;
   onMenuClick?: () => void;
 }
 
@@ -86,6 +87,7 @@ const roleLinks: Record<UserRole, Array<{ title: string; href: string }>> = {
 
 export default function WorkspaceHeader({
   role,
+  userName,
   onMenuClick,
 }: WorkspaceHeaderProps) {
   const pathname = usePathname();
@@ -158,6 +160,9 @@ export default function WorkspaceHeader({
             {roleMeta.label}
           </span>
         )}
+        <span className="hidden max-w-36 truncate text-xs text-slate-400 xl:inline">
+          {userName}
+        </span>
       </div>
 
       {/* Header Actions */}
