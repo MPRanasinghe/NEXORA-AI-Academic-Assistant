@@ -29,6 +29,6 @@ export const ROLE_META: Record<UserRole, RoleMeta> = {
     label: "Administrator",
     description: "Full platform access — users, analytics, and system settings.",
     color: "blue",
-    defaultPath: "/dashboard",
+    defaultPath: "/administration",
   },
 };

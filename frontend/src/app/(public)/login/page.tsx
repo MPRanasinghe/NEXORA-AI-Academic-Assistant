@@ -29,7 +29,7 @@ export default function LoginPage() {
   // If a session is already active, bounce to dashboard
   useEffect(() => {
     if (!loading && role !== null) {
-      router.replace("/dashboard");
+      router.replace(ROLE_META[role].defaultPath);
     }
   }, [loading, role, router]);
 

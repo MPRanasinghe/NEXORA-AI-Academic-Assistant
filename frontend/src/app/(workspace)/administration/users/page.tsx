@@ -1,90 +1,53 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  Users,
   Search,
-  Filter,
   ShieldCheck,
-  GraduationCap,
-  Briefcase,
-  Lock,
   Eye,
-  Info,
 } from "lucide-react";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import { UserRole } from "@/lib/user-role";
-
-interface DemoAccount {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  faculty: string;
-  status: "Active" | "Restricted";
-  lastActive: string;
-  permissions: string[];
-}
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    id: "usr-admin-01",
-    name: "Dr. Elena Vance (Lead Researcher)",
-    email: "admin.rag@university.edu",
-    role: "administrator",
-    faculty: "Office of the Academic Registrar & AI Research Lab",
-    status: "Active",
-    lastActive: "Now",
-    permissions: [
-      "Explainable RAG telemetry inspection",
-      "Corpus chunk indexing and deletion",
-      "Empirical evaluation benchmark execution",
-      "Ground-truth dataset curation",
-      "Hyperparameter configuration",
-    ],
-  },
-  {
-    id: "usr-staff-01",
-    name: "Prof. David Karunaratne",
-    email: "staff.computing@university.edu",
-    role: "academic_staff",
-    faculty: "Faculty of Computing & Information Technology",
-    status: "Active",
-    lastActive: "12 mins ago",
-    permissions: [
-      "Quiz management & creation",
-      "Course regulation document submission",
-      "Student learning insights view",
-    ],
-  },
-  {
-    id: "usr-student-01",
-    name: "Sample Student (Undergraduate Researcher)",
-    email: "student@example.invalid",
-    role: "student",
-    faculty: "BSc (Hons) Software Engineering",
-    status: "Active",
-    lastActive: "25 mins ago",
-    permissions: [
-      "Interactive Academic Assistant queries",
-      "Quiz Center assessment attempts",
-      "Learning resource library access",
-      "Personal study notes management",
-    ],
-  },
-];
+import {
+  AuthApiError,
+  getAdminUsers,
+  type AdminUser,
+} from "@/lib/auth-api";
 
 export default function UserManagementPage() {
   const [search, setSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("All");
-  const [inspectUser, setInspectUser] = useState<DemoAccount | null>(null);
+  const [inspectUser, setInspectUser] = useState<AdminUser | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filteredUsers = DEMO_ACCOUNTS.filter((u) => {
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setUsers(await getAdminUsers());
+    } catch (caughtError) {
+      setUsers([]);
+      setError(
+        caughtError instanceof AuthApiError
+          ? caughtError.message
+          : "Unable to load registered users.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  const filteredUsers = users.filter((u) => {
     const matchSearch =
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.full_name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.faculty.toLowerCase().includes(search.toLowerCase());
+      String(u.id).includes(search);
     const matchRole =
       selectedRole === "All" || u.role === selectedRole;
     return matchSearch && matchRole;
@@ -103,11 +66,11 @@ export default function UserManagementPage() {
         ]}
       />
 
-      {/* Demo Security Notice */}
+      {/* Database Security Notice */}
       <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/[0.04] p-4 text-xs text-blue-200/80">
         <ShieldCheck size={18} className="mt-0.5 shrink-0 text-blue-400" />
         <p className="leading-relaxed">
-          <strong>Illustrative sample accounts only:</strong> This static directory is separate from authenticated database users. Account identity and role access are verified by the backend authentication service.
+          <strong>Registered accounts:</strong> This directory displays authenticated database users. Password credentials are not included or exposed.
         </p>
       </div>
 
@@ -119,7 +82,7 @@ export default function UserManagementPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search demo accounts by name, email, or department..."
+            placeholder="Search registered users by name, email, or ID..."
             className="w-full rounded-xl border border-white/[0.08] bg-[#080B18] py-2.5 pl-10 pr-4 text-xs text-white placeholder-slate-500 outline-none transition focus:border-violet-500"
           />
         </div>
@@ -139,6 +102,22 @@ export default function UserManagementPage() {
         </div>
       </div>
 
+      {error && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-500/20 bg-red-500/[0.07] px-5 py-4 text-sm text-red-200"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => void loadUsers()}
+            className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Users Table */}
       <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#11162A]">
         <div className="overflow-x-auto">
@@ -147,13 +126,28 @@ export default function UserManagementPage() {
               <tr>
                 <th className="px-6 py-4 font-semibold">User Identity & Email</th>
                 <th className="px-6 py-4 font-semibold">Assigned Role</th>
-                <th className="px-6 py-4 font-semibold">Faculty / Department</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Last Active</th>
+                <th className="px-6 py-4 font-semibold">User ID</th>
+                <th className="px-6 py-4 font-semibold">Account Created</th>
                 <th className="px-6 py-4 text-right font-semibold">Permissions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
+              {loading && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                    Loading registered users...
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                    {users.length === 0
+                      ? "No registered users found."
+                      : "No users match the current filters."}
+                  </td>
+                </tr>
+              )}
               {filteredUsers.map((user) => {
                 const roleBadge =
                   user.role === "administrator"
@@ -166,7 +160,7 @@ export default function UserManagementPage() {
                   <tr key={user.id} className="transition hover:bg-white/[0.02]">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-semibold text-white">{user.name}</p>
+                        <p className="font-semibold text-white">{user.full_name}</p>
                         <p className="font-mono text-[11px] text-slate-400">{user.email}</p>
                       </div>
                     </td>
@@ -175,14 +169,11 @@ export default function UserManagementPage() {
                         {user.role.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-300">{user.faculty}</td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                        ● {user.status}
-                      </span>
+                    <td className="px-6 py-4 font-mono text-[11px] text-slate-400">
+                      #{user.id}
                     </td>
                     <td className="px-6 py-4 font-mono text-[11px] text-slate-400">
-                      {user.lastActive}
+                      {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
@@ -216,8 +207,11 @@ export default function UserManagementPage() {
                 <span className="rounded-full bg-blue-500/10 px-3 py-1 font-mono text-xs text-blue-300">
                   {inspectUser.id}
                 </span>
-                <h3 className="mt-2 text-lg font-bold text-white">{inspectUser.name}</h3>
-                <p className="text-xs text-slate-400">{inspectUser.email} · {inspectUser.faculty}</p>
+                <h3 className="mt-2 text-lg font-bold text-white">{inspectUser.full_name}</h3>
+                <p className="text-xs text-slate-400">{inspectUser.email}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Account created {new Date(inspectUser.created_at).toLocaleString()}
+                </p>
               </div>
               <button
                 onClick={() => setInspectUser(null)}
@@ -229,18 +223,17 @@ export default function UserManagementPage() {
 
             <div className="mt-6">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Authorized Platform Capabilities
+                Account Information
               </h4>
               <div className="mt-3 space-y-2">
-                {inspectUser.permissions.map((perm, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 rounded-xl border border-white/[0.05] bg-[#080B18] px-3.5 py-2.5 text-xs text-slate-300"
-                  >
-                    <ShieldCheck size={14} className="text-emerald-400" />
-                    <span>{perm}</span>
-                  </div>
-                ))}
+                <div className="flex items-center gap-2 rounded-xl border border-white/[0.05] bg-[#080B18] px-3.5 py-2.5 text-xs text-slate-300">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span>Role: {inspectUser.role.replace("_", " ")}</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-xl border border-white/[0.05] bg-[#080B18] px-3.5 py-2.5 text-xs text-slate-300">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span>User ID: #{inspectUser.id}</span>
+                </div>
               </div>
             </div>
 

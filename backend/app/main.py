@@ -11,6 +11,7 @@ from app.models import AcademicResource, Course, CourseEnrollment, Document, Use
 from app.api.routes.documents import router as documents_router
 from app.api.routes.quizzes import router as quizzes_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.admin import router as admin_router
 from app.core.config import settings
 from app.rag.services import build_rag_services
 
@@ -97,6 +98,11 @@ app.include_router(
 
 app.include_router(
     auth_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    admin_router,
     prefix="/api/v1"
 )
 

@@ -49,6 +49,23 @@ export interface AcademicDocumentListItem {
   status: string;
 }
 
+export interface AdminDashboardSummary {
+  total_registered_users: number;
+  total_students: number;
+  total_academic_staff: number;
+  total_administrators: number;
+  total_uploaded_documents: number;
+  total_quizzes: number;
+}
+
+export interface AdminUser {
+  id: number;
+  full_name: string;
+  email: string;
+  role: UserRole;
+  created_at: string;
+}
+
 export class AuthApiError extends Error {
   status: number;
 
@@ -135,6 +152,28 @@ export function loginUser(email: string, password: string) {
 
 export function getCurrentUser(token: string) {
   return request<AuthUser>("/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getAdminDashboardSummary() {
+  const token = window.localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new AuthApiError("Please sign in to view the dashboard.", 401);
+  }
+
+  return request<AdminDashboardSummary>("/admin/dashboard/summary", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getAdminUsers() {
+  const token = window.localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new AuthApiError("Please sign in to view users.", 401);
+  }
+
+  return request<AdminUser[]>("/admin/users", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,8 +21,18 @@ import {
   BookOpenCheck,
   ChevronRight,
   Eye,
+  Users,
+  GraduationCap,
+  Briefcase,
+  ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import {
+  AuthApiError,
+  getAdminDashboardSummary,
+  type AdminDashboardSummary,
+} from "@/lib/auth-api";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminStatCard from "@/components/admin/AdminStatCard";
@@ -44,9 +54,35 @@ export default function AdministrationOverviewPage() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedExecution, setSelectedExecution] = useState<AgentExecution | null>(null);
+  const [dashboardSummary, setDashboardSummary] =
+    useState<AdminDashboardSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState("");
+
+  const loadDashboardSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    setSummaryError("");
+    try {
+      setDashboardSummary(await getAdminDashboardSummary());
+    } catch (error) {
+      setDashboardSummary(null);
+      setSummaryError(
+        error instanceof AuthApiError
+          ? error.message
+          : "Unable to load dashboard statistics.",
+      );
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDashboardSummary();
+  }, [loadDashboardSummary]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    void loadDashboardSummary();
     setTimeout(() => {
       setIsRefreshing(false);
     }, 600);
@@ -141,53 +177,70 @@ export default function AdministrationOverviewPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {summaryError && (
+            <div
+              role="alert"
+              className="sm:col-span-2 lg:col-span-3 xl:col-span-6 rounded-2xl border border-red-500/20 bg-red-500/[0.07] px-5 py-4 text-sm text-red-200"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>{summaryError}</span>
+                <button
+                  type="button"
+                  onClick={() => void loadDashboardSummary()}
+                  className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
           <AdminStatCard
-            label="Indexed Documents"
-            value={documents.length}
-            sublabel={`${indexedDocs} Active · ${processingDocs} Ingesting`}
-            icon={Database}
-            trend="+12%"
+            label="Registered Users"
+            value={summaryLoading ? "—" : dashboardSummary?.total_registered_users ?? "—"}
+            sublabel={summaryLoading ? "Loading database count" : "All registered accounts"}
+            icon={Users}
             color="violet"
+            demoNotice={false}
           />
           <AdminStatCard
-            label="Vector Chunks"
-            value={totalChunks}
-            sublabel="512-Token Recursive VSM"
-            icon={Layers}
-            trend="+24"
+            label="Students"
+            value={summaryLoading ? "—" : dashboardSummary?.total_students ?? "—"}
+            sublabel={summaryLoading ? "Loading database count" : "Student accounts"}
+            icon={GraduationCap}
             color="cyan"
+            demoNotice={false}
           />
           <AdminStatCard
-            label="Retrieval Queries"
-            value="1,227"
-            sublabel="Academic Regulation Inquiries"
-            icon={SearchCode}
-            trend="+18%"
+            label="Academic Staff"
+            value={summaryLoading ? "—" : dashboardSummary?.total_academic_staff ?? "—"}
+            sublabel={summaryLoading ? "Loading database count" : "Staff accounts"}
+            icon={Briefcase}
             color="blue"
+            demoNotice={false}
           />
           <AdminStatCard
-            label="Agent Executions"
-            value="892"
-            sublabel="Multi-Step Reasoning Traces"
-            icon={Activity}
-            trend="98.2% Success"
+            label="Administrators"
+            value={summaryLoading ? "—" : dashboardSummary?.total_administrators ?? "—"}
+            sublabel={summaryLoading ? "Loading database count" : "Administrator accounts"}
+            icon={ShieldCheck}
             color="emerald"
+            demoNotice={false}
           />
           <AdminStatCard
-            label="Avg. Latency"
-            value="340ms"
-            sublabel="Hybrid Ranking & Fusion"
-            icon={Clock}
-            trend="Fast"
+            label="Uploaded Documents"
+            value={summaryLoading ? "—" : dashboardSummary?.total_uploaded_documents ?? "—"}
+            sublabel={summaryLoading ? "Loading database count" : dashboardSummary?.total_uploaded_documents === 0 ? "No documents uploaded" : "Documents in database"}
+            icon={Database}
             color="amber"
+            demoNotice={false}
           />
           <AdminStatCard
-            label="RAG Evaluation"
-            value={`${overallEval.toFixed(1)}%`}
-            sublabel="Mean Benchmark Score"
-            icon={CheckCircle2}
-            trend="Top Tier"
+            label="Total Quizzes"
+            value={summaryLoading ? "—" : dashboardSummary?.total_quizzes ?? "—"}
+            sublabel={summaryLoading ? "Loading database count" : dashboardSummary?.total_quizzes === 0 ? "No quizzes created" : "Quizzes in database"}
+            icon={ClipboardList}
             color="emerald"
+            demoNotice={false}
           />
         </div>
       </section>
